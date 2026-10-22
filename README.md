@@ -6,19 +6,24 @@ S7-1200** controla la bomba a través de un variador **Mitsubishi FR-D700**, y
 una **Raspberry Pi** corre el servidor (Django + MQTT + PostgreSQL) con el
 dashboard. Basada en la plataforma [urbanatika/ecs-iot](https://github.com/urbanatika/ecs-iot).
 
-## Inicio rápido (sin hardware)
+## Inicio rápido
+
+Necesitas Docker (Docker Desktop en Windows; en la Raspberry Pi:
+`curl -fsSL https://get.docker.com | sh`). Luego, un solo comando:
 
 ```
-copy .env.example .env          # edita las contraseñas
-docker compose up --build -d
-docker compose exec web python manage.py setup_planta
+./setup.sh                                                  # Linux, Raspberry Pi, Mac
+powershell -ExecutionPolicy Bypass -File .\setup.ps1        # Windows
 ```
 
-`setup_planta` registra los dispositivos `esp32-estanque` y `plc-bomba` con
-sus gadgets e imprime sus tokens. Pega `SIMULATOR_DEVICE_TOKENS` en `.env` y
-reinicia el simulador (`docker compose up -d simulator`). Entra a
-`http://localhost:8000/monitoring/`: verás el nivel subiendo y la bomba
-respondiendo a los botones y sliders del dashboard.
+El script crea el `.env` con contraseñas aleatorias, levanta todo, registra
+los dispositivos `esp32-estanque` y `plc-bomba` con sus gadgets, guarda sus
+tokens y deja listo `firmware/esp32_ecs_iot/config.h` para el ESP32. Al final
+imprime la URL del dashboard y el usuario y la contraseña de acceso.
+
+Arranca con el **simulador** (nivel y bomba falsos), así el dashboard se ve
+vivo desde el primer minuto. Al conectar el hardware real se apaga lo
+simulado desde el `.env` (ver [docs/PLC_VDF.md](docs/PLC_VDF.md)).
 
 - **Hardware (PLC, D700, Raspberry, cableado, programa TIA Portal):** [docs/PLC_VDF.md](docs/PLC_VDF.md)
 - **Firmware del ESP32:** [firmware/README.md](firmware/README.md)
