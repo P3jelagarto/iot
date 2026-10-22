@@ -25,7 +25,7 @@
           {% with widget=sensor.get_widget %}
           <div class="sensor-card" data-sensor-id="{{ sensor.id }}" data-widget-type="{{ widget.widget_type }}">
             <div class="sensor-card-header">
-              <h3>{{ sensor.variable }} <span class="unit">{{ sensor.unit }}</span></h3>
+              <h3>{{ sensor.label }} <span class="unit">{{ sensor.unit }}</span></h3>
               <a class="gadget-config-link" href="{% url 'monitoring:sensor-widget-edit' sensor.id %}" title="Configurar gadget">⚙</a>
             </div>
 

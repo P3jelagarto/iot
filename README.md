@@ -1,9 +1,31 @@
-# ECS IoT
+# Planta IoT: llenado de estanque
 
-Plataforma de monitoreo de sensores IoT de **puesta a tierra / protección
-eléctrica** vía MQTT (Mosquitto) con backend Django y dashboard en tiempo casi
-real (polling) usando Chart.js. Propiedad de **Electrical Services Company
-Temuco**.
+Plataforma de monitoreo y control de una **planta de llenado de estanque**:
+un **ESP32** mide el nivel con un sensor ultrasónico, un **PLC Siemens
+S7-1200** controla la bomba a través de un variador **Mitsubishi FR-D700**, y
+una **Raspberry Pi** corre el servidor (Django + MQTT + PostgreSQL) con el
+dashboard. Basada en la plataforma [urbanatika/ecs-iot](https://github.com/urbanatika/ecs-iot).
+
+## Inicio rápido (sin hardware)
+
+```
+copy .env.example .env          # edita las contraseñas
+docker compose up --build -d
+docker compose exec web python manage.py setup_planta
+```
+
+`setup_planta` registra los dispositivos `esp32-estanque` y `plc-bomba` con
+sus gadgets e imprime sus tokens. Pega `SIMULATOR_DEVICE_TOKENS` en `.env` y
+reinicia el simulador (`docker compose up -d simulator`). Entra a
+`http://localhost:8000/monitoring/`: verás el nivel subiendo y la bomba
+respondiendo a los botones y sliders del dashboard.
+
+- **Hardware (PLC, D700, Raspberry, cableado, programa TIA Portal):** [docs/PLC_VDF.md](docs/PLC_VDF.md)
+- **Firmware del ESP32:** [firmware/README.md](firmware/README.md)
+- **Nombre de la plataforma:** variable `SITE_NAME` en `.env`. El logo y la
+  imagen de fondo se suben desde **Configuración → Marca del sitio**.
+
+El resto de este documento describe la plataforma base.
 
 ## Arquitectura
 
@@ -23,7 +45,8 @@ Servicios (`docker-compose.yml`):
 | `migrate`       | Job one-shot: migraciones + creación del superusuario Global       |
 | `web`           | Django (gunicorn) sirviendo el dashboard y la API JSON            |
 | `mqtt_listener` | Suscriptor MQTT que persiste lecturas en PostgreSQL                |
-| `simulator`     | Publica datos falsos de sensores de puesta a tierra para probar el sistema |
+| `simulator`     | Simula la planta (nivel del estanque + PLC/bomba) y responde a los comandos del dashboard |
+| `plc_bridge`    | Puente Modbus TCP ↔ MQTT hacia el PLC S7-1200 (solo con `--profile plc`, en la Raspberry Pi) |
 
 No hay Redis, Channels ni WebSockets: las gráficas se actualizan por *polling*
 HTTP cada ~2.5s desde el navegador, suficiente para variables físicas

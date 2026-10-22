@@ -20,6 +20,10 @@ DEFAULT_UNITS = {
     "humedad": "%",
     "presion": "hPa",
     "gas": "kΩ",
+    "nivel": "%",
+    "setpoint_nivel": "%",
+    "frecuencia": "Hz",
+    "velocidad_ref": "Hz",
 }
 
 

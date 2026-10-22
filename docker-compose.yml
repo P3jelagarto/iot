@@ -103,6 +103,19 @@ services:
       mosquitto:
         condition: service_healthy
 
+  # Puente Modbus TCP <-> MQTT hacia el PLC S7-1200. Solo se levanta con
+  # `docker compose --profile plc up -d` (en la Raspberry Pi conectada al PLC).
+  plc_bridge:
+    build: ./plc_bridge
+    restart: unless-stopped
+    profiles: ["plc"]
+    env_file: .env
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   mosquitto_data:

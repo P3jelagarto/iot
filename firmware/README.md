@@ -1,8 +1,22 @@
-# Firmware ESP32 — ECS IoT
+# Firmware ESP32 — estanque
 
-Sketch de ejemplo para un ESP32 que publica telemetría hacia la plataforma
-ECS IoT y opcionalmente recibe comandos (gadget Botón/Slider), siguiendo el
-"Contrato MQTT" documentado en el `README.md` raíz del proyecto.
+Sketch para el ESP32 del estanque (`esp32-estanque`): mide el nivel con un
+sensor ultrasónico **HC-SR04** o **JSN-SR04T** (a prueba de agua) y lo publica
+en % como la variable `nivel`, siguiendo el "Contrato MQTT" documentado en el
+`README.md` raíz del proyecto.
+
+## Conexión del sensor
+
+| Sensor | ESP32 |
+|--------|-------|
+| VCC    | 5V (VIN) |
+| GND    | GND |
+| TRIG   | GPIO 5 |
+| ECHO   | GPIO 18 **a través de un divisor** (1 kΩ en serie, 2 kΩ a GND): ECHO sale a 5 V y el ESP32 trabaja a 3.3 V |
+
+Monta el sensor arriba del estanque, apuntando hacia el agua, y mide con una
+huincha la distancia al fondo (`DISTANCIA_VACIO_CM`) y al agua con el estanque
+lleno (`DISTANCIA_LLENO_CM`).
 
 ## Requisitos
 
@@ -19,12 +33,10 @@ Antes de tocar el firmware, el `Device` debe existir en el backend (las
 lecturas de un dispositivo no registrado, o con token inválido, se
 descartan y quedan en cuarentena como `UnregisteredReading`):
 
-1. Entra al dashboard (ver sección "Cómo revisar la plataforma" abajo) e
-   inicia sesión.
-2. **Dispositivos → + Agregar sensor**, completa nombre, **ID del
-   dispositivo** (slug, ej. `subestacion-01`) y opcionalmente etiqueta/ubicación.
-3. Al guardar, la plataforma muestra la página de **aprovisionamiento** con
-   el **slug** y el **token** único de ese dispositivo. Cópialos.
+Lo más rápido es `docker compose exec web python manage.py setup_planta`:
+registra `esp32-estanque` e imprime su token listo para `config.h`. También
+puedes verlo en **Dispositivos → esp32-estanque** (página de
+aprovisionamiento).
 
 ## 2. Configura el sketch
 
@@ -43,10 +55,8 @@ Edita `esp32_ecs_iot/config.h`:
     `mosquitto` (Settings → Networking → TCP Proxy en Railway).
 - `MQTT_USERNAME` / `MQTT_PASSWORD` — igual que `MQTT_USERNAME`/`MQTT_PASSWORD`
   de tu `.env`.
-- `SENSOR_VARIABLE`, `SENSOR_PIN`, `SENSOR_RAW_MIN/MAX`, `SENSOR_VALUE_MIN/MAX`
-  — calibra según el sensor real que conectes (telurómetro u otro
-  instrumental con salida analógica). Los valores por defecto son solo un
-  ejemplo para `resistencia_tierra`.
+- `TRIG_PIN`, `ECHO_PIN`, `DISTANCIA_VACIO_CM`, `DISTANCIA_LLENO_CM` — pines
+  y calibración del sensor ultrasónico (ver "Conexión del sensor").
 
 `config.h` está en `.gitignore` (contiene el token del dispositivo) — no se
 sube al repo.

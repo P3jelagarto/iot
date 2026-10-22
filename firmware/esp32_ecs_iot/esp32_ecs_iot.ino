@@ -1,9 +1,15 @@
-// ECS IoT - firmware de ejemplo para ESP32
+// Planta IoT - firmware del ESP32 del estanque (dispositivo "esp32-estanque")
+//
+// Mide el nivel del estanque con un sensor ultrasonico (HC-SR04 o JSN-SR04T,
+// montado arriba del estanque mirando hacia el agua) y lo publica en % como
+// la variable "nivel". La Raspberry Pi reenvia ese nivel al PLC S7-1200, que
+// controla la bomba con el variador D700.
 //
 // Implementa el "Contrato MQTT" del backend (ver README.md del proyecto):
 //   - Publica telemetria en   <prefix>/<slug>/<variable>          {value, timestamp, token}
 //   - Escucha comandos en     <prefix>/<slug>/<variable>/set      {value, token}
 //   - Al aplicar un comando, vuelve a publicar el nuevo estado en el topic de telemetria.
+//   - El LED ALARM_LED_PIN se enciende si el nivel supera NIVEL_ALARMA_ALTO (alarma local).
 //
 // Librerias requeridas (Arduino IDE -> Sketch -> Include Library -> Manage Libraries):
 //   - WiFiManager    by tzapu
@@ -96,12 +102,64 @@ void publishTelemetry(const char* variable, float value) {
   Serial.println(payload);
 }
 
+// Mide la distancia al agua en cm (o -1 si no hubo eco).
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long echoUs = pulseIn(ECHO_PIN, HIGH, 30000);  // 30 ms ~ 5 m maximo
+  if (echoUs == 0) {
+    return -1.0f;
+  }
+  return echoUs * 0.0343f / 2.0f;  // velocidad del sonido: 0.0343 cm/us, ida y vuelta
+}
+
+// Mediana de varias lecturas para filtrar ecos falsos (olas, salpicaduras).
+float readDistanceMedianCm() {
+  float samples[SAMPLES_PER_READING];
+  int count = 0;
+  for (int i = 0; i < SAMPLES_PER_READING; i++) {
+    float d = readDistanceCm();
+    if (d > 0) {
+      samples[count++] = d;
+    }
+    delay(60);  // el fabricante recomienda >= 60 ms entre disparos
+  }
+  if (count == 0) {
+    return -1.0f;
+  }
+  for (int i = 1; i < count; i++) {  // insertion sort, son pocas muestras
+    float key = samples[i];
+    int j = i - 1;
+    while (j >= 0 && samples[j] > key) {
+      samples[j + 1] = samples[j];
+      j--;
+    }
+    samples[j + 1] = key;
+  }
+  return samples[count / 2];
+}
+
 void readAndPublishSensor() {
-  int raw = analogRead(SENSOR_PIN);
-  float value = SENSOR_VALUE_MIN +
-      (float)(raw - SENSOR_RAW_MIN) * (SENSOR_VALUE_MAX - SENSOR_VALUE_MIN) /
-      (float)(SENSOR_RAW_MAX - SENSOR_RAW_MIN);
-  publishTelemetry(SENSOR_VARIABLE, value);
+  float distance = readDistanceMedianCm();
+  if (distance < 0) {
+    Serial.println("Sin eco del sensor ultrasonico, revisa el cableado (TRIG/ECHO/5V/GND).");
+    return;
+  }
+  // Estanque vacio: el agua esta a DISTANCIA_VACIO_CM del sensor; lleno: a DISTANCIA_LLENO_CM.
+  float nivel = (DISTANCIA_VACIO_CM - distance) * 100.0f / (DISTANCIA_VACIO_CM - DISTANCIA_LLENO_CM);
+  nivel = constrain(nivel, 0.0f, 100.0f);
+
+  Serial.print("Distancia ");
+  Serial.print(distance, 1);
+  Serial.print(" cm -> nivel ");
+  Serial.print(nivel, 1);
+  Serial.println(" %");
+
+  digitalWrite(ALARM_LED_PIN, nivel >= NIVEL_ALARMA_ALTO ? HIGH : LOW);
+  publishTelemetry(SENSOR_VARIABLE, nivel);
 }
 
 void handleCommand(char* topic, byte* payload, unsigned int length) {
@@ -159,6 +217,10 @@ void setup() {
 
   pinMode(COMMAND_PIN, OUTPUT);
   digitalWrite(COMMAND_PIN, LOW);
+  pinMode(ALARM_LED_PIN, OUTPUT);
+  digitalWrite(ALARM_LED_PIN, LOW);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
 
   setupWiFi();
 

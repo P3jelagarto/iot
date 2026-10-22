@@ -210,6 +210,19 @@ class Device(models.Model):
         return self.latitude is not None and self.longitude is not None
 
 
+# Nombres legibles para las variables de la planta; el resto se muestra con
+# los "_" reemplazados por espacios.
+VARIABLE_LABELS = {
+    "nivel": "Nivel del estanque",
+    "bomba_marcha": "Marcha bomba",
+    "modo_auto": "Modo automático",
+    "setpoint_nivel": "Setpoint de nivel",
+    "velocidad_ref": "Velocidad manual",
+    "frecuencia": "Frecuencia VDF",
+    "falla": "Falla",
+}
+
+
 class Sensor(models.Model):
     device = models.ForeignKey(Device, related_name="sensors", on_delete=models.CASCADE)
     variable = models.CharField(max_length=50, help_text="ej. resistencia_tierra, voltaje, continuidad")
@@ -223,6 +236,10 @@ class Sensor(models.Model):
 
     def __str__(self):
         return f"{self.device.name} / {self.variable}"
+
+    @property
+    def label(self):
+        return VARIABLE_LABELS.get(self.variable, self.variable.replace("_", " ").capitalize())
 
     def get_widget(self):
         widget, _ = Widget.objects.get_or_create(sensor=self)

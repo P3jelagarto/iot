@@ -240,7 +240,7 @@ h1 {
   font-weight: 500;
   color: var(--text-secondary);
   margin: 0 0 4px 0;
-  text-transform: capitalize;
+  text-transform: none;
 }
 
 .sensor-card h3 .unit {
