@@ -1,0 +1,30 @@
+# Environment / secrets
+.env
+mosquitto/config/passwd
+firmware/**/config.h
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Django
+backend/staticfiles/
+backend/media/
+*.sqlite3
+backend/db.sqlite3
+
+# Docker
+docker-compose.override.yml
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
