@@ -1,35 +1,21 @@
 :root {
-  --surface-1: #fcfcfb;
-  --page-plane: #f9f9f7;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
-  --gridline: #e1e0d9;
-  --baseline: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.10);
-  --series-1: #2a78d6;
-  --status-good: #0ca30c;
-  --status-critical: #d03b3b;
-  --meter-track: #cde2fb;
-  --brand-primary: #1F2933;
-  --brand-accent: #F2A900;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface-1: #1a1a19;
-    --page-plane: #0d0d0d;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
-    --gridline: #2c2c2a;
-    --baseline: #383835;
-    --border: rgba(255, 255, 255, 0.10);
-    --series-1: #3987e5;
-    --meter-track: #184f95;
-    --brand-primary: #3A4A57;
-    --brand-accent: #FFC72C;
-  }
+  /* Tema oscuro fijo del proyecto. Cambia --brand-primary / --brand-accent
+     para ajustar los colores de marca. */
+  color-scheme: dark;
+  --surface-1: #121a26;
+  --page-plane: #0a0f17;
+  --text-primary: #e6edf5;
+  --text-secondary: #a3b1c2;
+  --text-muted: #6b7a8c;
+  --gridline: #1f2a38;
+  --baseline: #2c3a4c;
+  --border: rgba(230, 237, 245, 0.10);
+  --series-1: #22d3ee;
+  --status-good: #22c55e;
+  --status-critical: #ef4444;
+  --meter-track: #164e63;
+  --brand-primary: #0891b2;
+  --brand-accent: #22d3ee;
 }
 
 * {

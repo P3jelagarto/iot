@@ -108,5 +108,5 @@ MQTT_TOPIC_PREFIX = env("MQTT_TOPIC_PREFIX", default="ecs")
 GOOGLE_MAPS_API_KEY = env("GOOGLE_MAPS_API_KEY", default="")
 
 # --- Marca del sitio (usada como fallback en templates) ---
-SITE_NAME = "ECS IoT"
-SITE_OWNER = "Electrical Services Company Temuco"
+SITE_NAME = env("SITE_NAME", default="Planta IoT")
+SITE_OWNER = env("SITE_OWNER", default="")

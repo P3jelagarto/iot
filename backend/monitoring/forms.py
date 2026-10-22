@@ -87,7 +87,7 @@ class SiteBrandingForm(forms.ModelForm):
         model = SiteBranding
         fields = ["logo", "background_image", "map_icon"]
         labels = {
-            "logo": "Logo de ECS IoT (login y dashboard)",
+            "logo": "Logo de la plataforma (login y dashboard)",
             "background_image": "Imagen de fondo",
             "map_icon": "Ícono del mapa (exclusivo)",
         }

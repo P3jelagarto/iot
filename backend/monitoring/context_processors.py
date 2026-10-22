@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from .models import SiteBranding
 from .permissions import get_profile, is_admin_or_global
 
@@ -8,6 +10,7 @@ def role_context(request):
     site_background_url = branding.background_image.url if branding.background_image else None
 
     context = {
+        "platform_name": settings.SITE_NAME,
         "site_branding": branding,
         "effective_logo_url": site_logo_url,
         "effective_background_url": site_background_url,
