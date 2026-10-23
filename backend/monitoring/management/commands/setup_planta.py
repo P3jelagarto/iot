@@ -10,8 +10,12 @@ Registra dos dispositivos:
 - ``plc-bomba``: el S7-1200 + variador D700, publicado por el puente
   Modbus TCP que corre en la Raspberry Pi (``plc_bridge/``).
 
+Además crea el usuario de solo lectura para el profesor (``cliente`` /
+``123456`` por defecto, rol Visualizador): solo ve el dashboard.
+
 Es seguro de re-correr: si los dispositivos ya existen, solo actualiza sus
-variables y gadgets (los tokens no cambian). Al final imprime los tokens y
+variables y gadgets (los tokens no cambian). Si el usuario de solo lectura ya
+existe, no le cambia la contraseña. Al final imprime los tokens y
 la línea lista para pegar en ``.env``.
 """
 from django.contrib.auth.models import User
@@ -55,6 +59,8 @@ class Command(BaseCommand):
             "--owner",
             help="Usuario dueño de los dispositivos (por defecto, el primer usuario Global activo).",
         )
+        parser.add_argument("--viewer-username", default="cliente", help="Usuario de solo lectura.")
+        parser.add_argument("--viewer-password", default="123456", help="Contraseña inicial del usuario de solo lectura.")
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -79,12 +85,26 @@ class Command(BaseCommand):
                     sensor=sensor, defaults={"widget_type": widget_type, **widget_options}
                 )
 
+        self._ensure_viewer(options["viewer_username"], options["viewer_password"])
+
         esp32_token = devices[ESP32_SLUG].auth_token
         plc_token = devices[PLC_SLUG].auth_token
         self.stdout.write(self.style.SUCCESS("\nListo. Pega estas líneas en tu .env:\n"))
         self.stdout.write(f"SIMULATOR_DEVICE_TOKENS={ESP32_SLUG}:{esp32_token},{PLC_SLUG}:{plc_token}")
         self.stdout.write(f"PLC_DEVICE_TOKEN={plc_token}")
         self.stdout.write(f"\nY en firmware/esp32_ecs_iot/config.h:\n#define DEVICE_TOKEN \"{esp32_token}\"")
+
+    def _ensure_viewer(self, username, password):
+        viewer, created = User.objects.get_or_create(username=username)
+        if created:
+            # set_password no pasa por los validadores, así que acepta una clave simple.
+            viewer.set_password(password)
+            viewer.save()
+        Profile.objects.update_or_create(user=viewer, defaults={"role": Profile.ROLE_VIEWER})
+        if created:
+            self.stdout.write(f"Creado usuario de solo lectura: {username} / {password}")
+        else:
+            self.stdout.write(f"Usuario de solo lectura {username!r} ya existía (contraseña sin cambios).")
 
     def _resolve_owner(self, username):
         if username:

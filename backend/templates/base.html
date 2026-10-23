@@ -24,10 +24,15 @@
             {{ platform_name }}{% if user_profile.project_name %} · {{ user_profile.project_name }}{% endif %}
         </a>
         <nav>
-            {% if user.is_authenticated %}
-                <a href="{% url 'monitoring:product-list' %}">Productos</a>
+            {% if user.is_authenticated and user_role == "viewer" %}
+                <span class="user">{{ user.username }} · solo lectura</span>
+                <form method="post" action="{% url 'logout' %}" class="logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="link-button">Salir</button>
+                </form>
+            {% elif user.is_authenticated %}
+                <a href="{% url 'monitoring:dashboard' %}">Dashboard</a>
                 <a href="{% url 'monitoring:device-list' %}">Dispositivos</a>
-                <a href="{% url 'monitoring:devices-map' %}">Mapa</a>
                 <a href="{% url 'monitoring:profile-branding-edit' %}">Personalización</a>
                 {% if user_is_admin_or_global or user_role == "global" %}
                     <details class="nav-dropdown">
@@ -38,8 +43,6 @@
                             {% endif %}
                             {% if user_role == "global" %}
                                 <a href="{% url 'monitoring:site-branding-edit' %}">Marca del sitio</a>
-                                <a href="{% url 'monitoring:product-type-list' %}">Tipos de producto</a>
-                                <a href="{% url 'monitoring:platform-overview' %}">Panorama</a>
                             {% endif %}
                         </div>
                     </details>

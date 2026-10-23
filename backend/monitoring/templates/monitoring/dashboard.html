@@ -4,7 +4,9 @@
 {% block content %}
 <div class="page-header">
   <h1>Dashboard</h1>
+  {% if user_role != "viewer" %}
   <a class="btn" href="{% url 'monitoring:device-create' %}">+ Agregar dispositivo</a>
+  {% endif %}
 </div>
 
 {{ seed_data|json_script:"seed-data" }}
@@ -26,7 +28,9 @@
           <div class="sensor-card" data-sensor-id="{{ sensor.id }}" data-widget-type="{{ widget.widget_type }}">
             <div class="sensor-card-header">
               <h3>{{ sensor.label }} <span class="unit">{{ sensor.unit }}</span></h3>
+              {% if user_role != "viewer" %}
               <a class="gadget-config-link" href="{% url 'monitoring:sensor-widget-edit' sensor.id %}" title="Configurar gadget">⚙</a>
+              {% endif %}
             </div>
 
             {% localize off %}
@@ -51,14 +55,16 @@
 
             {% elif widget.widget_type == "button" %}
               <button type="button" class="gadget-button" data-role="gadget-button"
-                      data-on-value="{{ widget.button_on_value }}" data-off-value="{{ widget.button_off_value }}">
+                      data-on-value="{{ widget.button_on_value }}" data-off-value="{{ widget.button_off_value }}"
+                      {% if user_role == "viewer" %}disabled{% endif %}>
                 --
               </button>
 
             {% elif widget.widget_type == "slider" %}
               <div class="sensor-value" data-role="latest-value">--</div>
               <input type="range" class="gadget-slider" data-role="gadget-slider"
-                     min="{{ widget.min_value }}" max="{{ widget.max_value }}" step="{{ widget.slider_step }}">
+                     min="{{ widget.min_value }}" max="{{ widget.max_value }}" step="{{ widget.slider_step }}"
+                     {% if user_role == "viewer" %}disabled{% endif %}>
             {% endif %}
             {% endlocalize %}
           </div>
@@ -70,8 +76,10 @@
   {% empty %}
     <p class="empty-state">
       No hay dispositivos activos todavía.
+      {% if user_role != "viewer" %}
       <a href="{% url 'monitoring:device-create' %}">Agrega un sensor</a> para
       obtener su ID y token, y prográmalo en el hardware.
+      {% endif %}
     </p>
   {% endfor %}
 </div>

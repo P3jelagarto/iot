@@ -109,19 +109,13 @@ DEVICE_SORT_CHOICES = {
 
 @login_required
 def device_list(request):
-    devices = devices_for(request.user).select_related("product")
+    devices = devices_for(request.user)
 
     status = request.GET.get("status", "")
     if status == "active":
         devices = devices.filter(is_active=True)
     elif status == "inactive":
         devices = devices.filter(is_active=False)
-
-    assignment = request.GET.get("assignment", "")
-    if assignment == "assigned":
-        devices = devices.filter(product__isnull=False)
-    elif assignment == "unassigned":
-        devices = devices.filter(product__isnull=True)
 
     sort = request.GET.get("sort", "name")
     if sort not in DEVICE_SORT_CHOICES:
@@ -133,7 +127,6 @@ def device_list(request):
         "sort_choices": DEVICE_SORT_CHOICES,
         "selected_sort": sort,
         "selected_status": status,
-        "selected_assignment": assignment,
     }
     return render(request, "monitoring/device_list.html", context)
 

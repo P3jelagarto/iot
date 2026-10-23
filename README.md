@@ -27,6 +27,9 @@ simulado desde el `.env` (ver [docs/PLC_VDF.md](docs/PLC_VDF.md)).
 
 - **Hardware (PLC, D700, Raspberry, cableado, programa TIA Portal):** [docs/PLC_VDF.md](docs/PLC_VDF.md)
 - **Firmware del ESP32:** [firmware/README.md](firmware/README.md)
+- **Usuario para el profesor:** `cliente` / `123456`, rol **Visualizador**:
+  solo ve el dashboard en vivo, sin poder mover controles ni entrar a la
+  configuración. Lo crea `setup_planta`.
 - **Nombre de la plataforma:** variable `SITE_NAME` en `.env`. El logo y la
   imagen de fondo se suben desde **Configuración → Marca del sitio**.
 
@@ -151,10 +154,6 @@ Si usas sensores reales (telurómetros u otro instrumental con salida
 programable) en vez del simulador, registra un `Device` por cada uno con el
 `slug` que tú definas y programa su token en el firmware.
 
-Alternativamente, `python manage.py seed_demo_data` (ver más abajo) carga de
-golpe operadores, productos, dispositivos y lecturas históricas de
-demostración sin depender del simulador.
-
 ### 5. Ver el dashboard
 
 ```
@@ -240,131 +239,32 @@ de cada dispositivo sugiere un nombre para ese punto de acceso
 ## Roles y usuarios
 
 Todo se gestiona desde el dashboard (`/monitoring/`), no hace falta el Admin
-de Django para el uso normal. Tres roles (`monitoring/models.py:Profile`):
+de Django para el uso normal. Cuatro roles (`monitoring/models.py:Profile`):
 
-| Rol            | Alcance                                                                 |
-|----------------|----------------------------------------------------------------------------|
-| **Global**     | Ve y administra los dispositivos de **todos** los usuarios, incluido el mapa global y los productos contratados de todos los clientes. |
-| **Administrador** | Administra sus propios dispositivos (como Operador) + puede dar de alta/baja cuentas desde `/monitoring/users/`. No puede crear cuentas Global. |
-| **Operador**   | La empresa que contrata el servicio. Administra solo los dispositivos y puestas a tierra que él mismo registra. |
+| Rol               | Alcance |
+|-------------------|---------|
+| **Global**        | Ve y administra los dispositivos de **todos** los usuarios y la marca del sitio. |
+| **Administrador** | Administra sus propios dispositivos + puede dar de alta/baja cuentas desde `/monitoring/users/`. No puede crear cuentas Global. |
+| **Operador**      | Administra solo los dispositivos que él mismo registra. |
+| **Visualizador**  | Solo lectura: ve el dashboard en vivo de todos los dispositivos, sin mover controles ni abrir otras páginas. Pensado para el profesor (`cliente` / `123456`, lo crea `setup_planta`). |
 
 El superusuario creado por `DJANGO_SUPERUSER_*` (ver arriba) es **Global**
-automáticamente desde el momento en que se crea. Para crear más usuarios,
-inicia sesión como Global o Administrador y ve a **Usuarios → + Agregar
-usuario**. No hay auto-registro público ni recuperación de contraseña — el
-alta la hace siempre un Administrador/Global, asignando la contraseña
-inicial directamente.
-
-Desactivar una cuenta (`/monitoring/users/`) no la borra — solo bloquea el
-login; se puede reactivar en cualquier momento.
-
-## Productos (electroimán activo, malla a tierra, barra Copperweld, ...)
-
-Un **Producto** (`/monitoring/products/`) agrupa uno o más dispositivos bajo
-un nombre y un tipo — ej. "Malla a tierra - Subestación Norte" (tipo Malla a
-tierra). Al crearlo:
-
-- Puedes **agregarle un sensor** (`+ Agregar sensor a este producto`) — un
-  dispositivo normal, solo que queda vinculado al producto.
-- Si **no** le agregas ningún sensor, puedes registrar el estado a mano
-  (nota + opcionalmente una variable/valor/unidad, ej. una medición manual
-  con telurómetro) desde la misma página del producto.
-- Tiene su propia ubicación (`Configurar ubicación`), independiente de la de
-  sus dispositivos.
-
-En el **Mapa**, cada producto aparece como **un solo marcador** (aunque
-tenga varios dispositivos/sensores) con el ícono de su tipo, y al hacer
-click muestra el tipo + todos sus sensores combinados, o sus últimas
-entradas manuales si no tiene sensor. Los dispositivos que **no** pertenecen
-a ningún producto siguen apareciendo sueltos, con el ícono genérico.
-
-El rol Global gestiona los **tipos de producto** y sus íconos desde
-`/monitoring/product-types/` — vienen 3 precargados (**Electroimán activo**,
-**Malla a tierra**, **Barra Copperweld**) con el ícono genérico del Mapa por
-defecto; se pueden reemplazar las veces que quieras, y el rol Global puede
-crear **tipos nuevos** en cualquier momento (ej. uno específico que pida un
-cliente) sin tocar código.
-
-## Carga masiva de datos de demostración
-
-El mecanismo para poblar el sistema con operadores, productos, dispositivos y
-sensores de golpe es el management command `seed_demo_data`
-(`backend/monitoring/management/commands/seed_demo_data.py`):
-
-```
-docker compose exec web python manage.py seed_demo_data
-```
-
-Es reproducible (semilla fija con `--seed`) y parametrizable (`--users`,
-`--products`, `--password`). Reutiliza usuarios/slugs existentes en vez de
-asumir una base vacía, así que puede volver a correrse sin duplicar lo ya
-creado por una corrida anterior con la misma semilla. Además genera una
-serie histórica de ~30 lecturas por sensor (últimas horas) para que el
-dashboard y el mapa no se vean vacíos tras el primer arranque. Este mismo
-patrón (management command idempotente + parámetros) es el que conviene
-seguir para cualquier carga masiva futura (ej. importar un CSV real de
-dispositivos: se agregaría como una opción `--from-csv` a este mismo command
-en vez de un mecanismo aparte).
-
-## Panorama global (solo Global)
-
-`/monitoring/overview/` — foto del estado actual (no historial): total de
-usuarios por rol, y por cada usuario cuántos productos tiene de cada tipo,
-y cuántos dispositivos/sensores activos e inactivos.
-
-## Geolocalización (Google Maps)
-
-Cualquier usuario puede fijar la ubicación de sus dispositivos sueltos desde
-**Dispositivos → Ubicación**, o de sus productos desde
-**Productos → Configurar ubicación**, y ver todo geolocalizado en **Mapa**
-(un usuario Global ve lo de todos los usuarios ahí mismo).
-
-Requiere una API key de Google Maps en tu `.env`:
-
-1. Entra a [Google Cloud Console](https://console.cloud.google.com/), crea o
-   selecciona un proyecto.
-2. Habilita **Maps JavaScript API**.
-3. Crea una API key (Credenciales → Crear credenciales → Clave de API) y
-   restríngela por HTTP referrer (tu dominio, o `localhost` en desarrollo) —
-   la key viaja al navegador, así que sin esta restricción cualquiera podría
-   reusarla.
-4. Pégala en `.env` como `GOOGLE_MAPS_API_KEY` y corre `docker compose up -d web`.
-
-Sin la key configurada, esas páginas muestran un aviso con estos mismos
-pasos en vez del mapa, pero igual puedes guardar coordenadas manualmente
-(campos de latitud/longitud) mientras tanto.
+automáticamente. Para crear más usuarios, inicia sesión como Global o
+Administrador y ve a **Configuración → Usuarios → + Agregar usuario**.
+Desactivar una cuenta no la borra: solo bloquea el login y se puede
+reactivar.
 
 ## Identidad visual
 
-Los colores (`backend/monitoring/static/monitoring/css/dashboard.css`,
-variables `--brand-primary`/`--brand-accent`) son un **placeholder
-genérico** (grafito `#1F2933` + amarillo seguridad `#F2A900`) — no son
-necesariamente la marca real de Electrical Services Company Temuco. En
-cuanto tengas los hex definitivos, se reemplazan ahí.
+- **Colores:** variables `--brand-primary` / `--brand-accent` en
+  `backend/monitoring/static/monitoring/css/dashboard.css` (tema oscuro).
+- **Nombre:** `SITE_NAME` en `.env`.
+- **Logo e imagen de fondo:** **Configuración → Marca del sitio** (rol
+  Global). Se usan en el login y en el dashboard. Cada usuario puede además
+  poner los suyos en **Personalización**.
 
-El **logo**, la **imagen de fondo** y el **ícono del mapa** son totalmente
-configurables desde el dashboard (sin tocar código):
-
-- **Marca del sitio** (`/monitoring/branding/`, solo rol Global) — tres
-  campos independientes:
-  - **Logo** e **imagen de fondo**: valor por defecto de ECS IoT, usados
-    en la pantalla de **login** y en el dashboard de cualquier usuario que
-    no haya subido los suyos propios.
-  - **Ícono del mapa**: exclusivo para los marcadores de `/monitoring/map/`.
-    No tiene relación con el logo de login/dashboard ni con el de "Mi
-    proyecto" de ningún usuario — solo el rol Global lo sube/reemplaza, y
-    aparece igual para todos los usuarios que vean el mapa.
-- **Mi proyecto** (`/monitoring/profile/branding/`, cualquier usuario) — cada
-  usuario (operador) puede poner el nombre de su propia empresa (se muestra
-  junto a "ECS IoT", que siempre queda como título general) y su propio logo
-  e imagen de fondo, que sobrescriben los de Marca del sitio solo en *su*
-  dashboard (nunca en el mapa ni en el login).
-
-Las imágenes se guardan en un volumen Docker (`media_data`, servido en
-`/media/`) — persisten entre reinicios y rebuilds, pero **no** se
-respaldan automáticamente; si migras a otro servidor, copia también ese
-volumen. Límite de 5MB por imagen (formatos que entienda Pillow: JPG, PNG,
-WEBP, etc.).
+Las imágenes se guardan en el volumen Docker `media_data` (persisten entre
+reinicios, pero no se respaldan solas). Límite de 5 MB por imagen.
 
 ## Migración a un servidor Linux
 

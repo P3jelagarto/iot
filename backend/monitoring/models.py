@@ -20,10 +20,12 @@ class Profile(models.Model):
     ROLE_GLOBAL = "global"
     ROLE_ADMIN = "admin"
     ROLE_OWNER = "owner"
+    ROLE_VIEWER = "viewer"
     ROLE_CHOICES = [
         (ROLE_GLOBAL, "Global"),
         (ROLE_ADMIN, "Administrador"),
         (ROLE_OWNER, "Operador"),
+        (ROLE_VIEWER, "Visualizador (solo lectura)"),
     ]
 
     user = models.OneToOneField(User, related_name="profile", on_delete=models.CASCADE)

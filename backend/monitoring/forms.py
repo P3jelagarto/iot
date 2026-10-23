@@ -16,10 +16,10 @@ class DeviceRegistrationForm(forms.ModelForm):
             "location": "Ubicación",
         }
         widgets = {
-            "name": forms.TextInput(attrs={"placeholder": "ej. Sensor Subestación Norte"}),
-            "slug": forms.TextInput(attrs={"placeholder": "ej. subestacion-01"}),
-            "tag": forms.TextInput(attrs={"placeholder": "ej. sala-electrica"}),
-            "location": forms.TextInput(attrs={"placeholder": "ej. Subestación Norte, Temuco"}),
+            "name": forms.TextInput(attrs={"placeholder": "ej. Sensor de caudal"}),
+            "slug": forms.TextInput(attrs={"placeholder": "ej. esp32-caudal"}),
+            "tag": forms.TextInput(attrs={"placeholder": "ej. esp32"}),
+            "location": forms.TextInput(attrs={"placeholder": "ej. Laboratorio, estanque 1"}),
         }
 
 

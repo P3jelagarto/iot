@@ -108,6 +108,7 @@ if ($newEnv) {
 } else {
   Write-Host " Usuario y contraseña: están en tu .env (DJANGO_SUPERUSER_*)"
 }
+Write-Host " Profesor (solo lectura): cliente / 123456"
 Write-Host ""
 Write-Host " Ahora corre el SIMULADOR (nivel y bomba falsos)."
 Write-Host " Cuando conectes el hardware real, en .env:"

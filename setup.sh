@@ -101,6 +101,7 @@ if $NEW_ENV; then
 else
   echo " Usuario y contraseña: están en tu .env (DJANGO_SUPERUSER_*)"
 fi
+echo " Profesor (solo lectura): cliente / 123456"
 echo
 echo " Ahora corre el SIMULADOR (nivel y bomba falsos)."
 echo " Cuando conectes el hardware real, en .env:"

@@ -844,3 +844,9 @@ h1 {
   overflow-x: auto;
   max-width: 640px;
 }
+
+/* Controles bloqueados para el rol Visualizador (solo lectura) */
+.gadget-button:disabled,
+.gadget-slider:disabled {
+  cursor: not-allowed;
+}
