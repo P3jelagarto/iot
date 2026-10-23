@@ -25,6 +25,7 @@ Arranca con el **simulador** (nivel y bomba falsos), así el dashboard se ve
 vivo desde el primer minuto. Al conectar el hardware real se apaga lo
 simulado desde el `.env` (ver [docs/PLC_VDF.md](docs/PLC_VDF.md)).
 
+- **Conectar el PLC y el variador paso a paso:** [docs/PUESTA_EN_MARCHA.md](docs/PUESTA_EN_MARCHA.md)
 - **Hardware (PLC, D700, Raspberry, cableado, programa TIA Portal):** [docs/PLC_VDF.md](docs/PLC_VDF.md)
 - **Firmware del ESP32:** [firmware/README.md](firmware/README.md)
 - **Usuario para el profesor:** `cliente` / `123456`, rol **Visualizador**:
