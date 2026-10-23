@@ -104,6 +104,9 @@ Prueba antes de conectar el PLC: con un puente STF-SD y un potenciómetro en
 
 ### 4.2 Bloque de control (FB en SCL)
 
+¿Prefieres ladder (KOP)? El mismo programa, segmento por segmento, está en
+[PLC_LADDER.md](PLC_LADDER.md).
+
 Crea un FB **`FB_Bomba`** en SCL y llámalo en OB1 después de `MB_SERVER`.
 
 - **Static:** `wdTimer : TON_TIME`, `wdAnterior : Int`, `comOk : Bool`, `marcha : Bool`
