@@ -51,7 +51,21 @@ void setupWiFi() {
       Serial.println(WiFi.localIP());
       return;
     }
-    Serial.println("\nNo se pudo conectar con WIFI_SSID/WIFI_PASSWORD, cae al portal cautivo.");
+    wl_status_t st = WiFi.status();
+    Serial.print("\nNo se pudo conectar con WIFI_SSID/WIFI_PASSWORD (estado ");
+    Serial.print(st);
+    Serial.println(").");
+    if (st == WL_NO_SSID_AVAIL) {
+      Serial.println("  -> No encuentra la red: revisa el nombre exacto y que sea de 2.4 GHz.");
+    } else if (st == WL_CONNECT_FAILED) {
+      Serial.println("  -> La red rechazo la clave: revisa WIFI_PASSWORD.");
+    } else {
+      Serial.println("  -> Sin respuesta de la red: revisa clave, distancia y que sea 2.4 GHz.");
+    }
+    Serial.println("Cae al portal cautivo.");
+    // Corta el intento en curso; si no, WiFiManager falla con "sta is connecting".
+    WiFi.disconnect(true);
+    delay(200);
   }
 
   WiFiManager wifiManager;
