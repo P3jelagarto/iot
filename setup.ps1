@@ -80,9 +80,12 @@ Set-Var "PLC_DEVICE_TOKEN" $plcToken
 docker compose up -d simulator
 
 # IP de esta máquina en la red (la que usará el ESP32 para llegar al broker)
-$hostIp = (Get-NetIPAddress -AddressFamily IPv4 |
+# Prefiere la tarjeta con puerta de enlace (el WiFi/Ethernet real), no las virtuales de WSL/Docker.
+$hostIp = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq "Up" } |
+  Select-Object -First 1).IPv4Address.IPAddress
+if (-not $hostIp) { $hostIp = (Get-NetIPAddress -AddressFamily IPv4 |
   Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" -and $_.InterfaceAlias -notmatch "vEthernet|WSL|Loopback" } |
-  Select-Object -First 1).IPAddress
+  Select-Object -First 1).IPAddress }
 if (-not $hostIp) { $hostIp = "IP-DE-ESTA-MAQUINA" }
 
 $cfg = "firmware/esp32_ecs_iot/config.h"
