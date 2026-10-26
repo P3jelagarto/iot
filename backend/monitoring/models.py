@@ -196,6 +196,7 @@ class Device(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
+    position = models.PositiveIntegerField(default=0, help_text="Orden en el dashboard (menor va primero).")
 
     class Meta:
         ordering = ["name"]
@@ -296,6 +297,7 @@ class Widget(models.Model):
         default=False,
         help_text="Muestra este valor en la fila de indicadores de arriba del dashboard.",
     )
+    position = models.PositiveIntegerField(default=0, help_text="Orden dentro de su dispositivo (menor va primero).")
 
     def __str__(self):
         return f"{self.sensor} ({self.get_widget_type_display()})"

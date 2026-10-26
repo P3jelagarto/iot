@@ -390,6 +390,52 @@ h1 {
   accent-color: var(--series-1);
 }
 
+/* --- Editar orden --- */
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.order-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.editing-order .device-card,
+.editing-order .sensor-card {
+  cursor: grab;
+  user-select: none;
+}
+
+.editing-order .device-card {
+  border-style: dashed;
+  border-color: rgba(34, 211, 238, 0.45);
+}
+
+.editing-order .sensor-card {
+  border-style: dashed;
+}
+
+/* Mientras se ordena, los controles no deben dispararse con un clic. */
+.editing-order .sensor-card button,
+.editing-order .sensor-card input,
+.editing-order .sensor-card a,
+.editing-order .sensor-card canvas {
+  pointer-events: none;
+}
+
+.sortable-ghost {
+  opacity: 0.35;
+}
+
+.sortable-chosen {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
 /* --- Indicadores (fila de arriba) --- */
 
 .page-subtitle {
