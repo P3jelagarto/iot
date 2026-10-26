@@ -56,8 +56,8 @@ VERSION : 0.1
    VAR_TEMP 
       nivel : Real;
       setpoint : Real;
-      ref : Real;
-      falla : Bool;
+      refHz : Real;
+      hayFalla : Bool;
    END_VAR
 
 BEGIN
@@ -76,16 +76,16 @@ BEGIN
 	    ELSIF #nivel < #setpoint - 3.0 THEN
 	        #marcha := TRUE;
 	    END_IF;
-	    #ref := LIMIT(MN := 20.0, IN := 4.0 * (#setpoint - #nivel), MX := 50.0);
+	    #refHz := LIMIT(MN := 20.0, IN := 4.0 * (#setpoint - #nivel), MX := 50.0);
 	ELSE
 	    // Manual: marcha y velocidad desde el dashboard
 	    #marcha := "MB_DATA".reg[0] <> 0;
-	    #ref := LIMIT(MN := 0.0, IN := INT_TO_REAL("MB_DATA".reg[3]) / 10.0, MX := 50.0);
+	    #refHz := LIMIT(MN := 0.0, IN := INT_TO_REAL("MB_DATA".reg[3]) / 10.0, MX := 50.0);
 	END_IF;
 	
 	// Sin contacto de falla cableado: la falla es perder la comunicacion
-	#falla := NOT #comOk;
-	IF #falla THEN
+	#hayFalla := NOT #comOk;
+	IF #hayFalla THEN
 	    #marcha := FALSE;
 	END_IF;
 	
@@ -93,7 +93,7 @@ BEGIN
 	// (asi tambien funciona con Pr.79 = 4, marcha desde la tecla RUN del panel)
 	%Q0.0 := #marcha;
 	IF #marcha THEN
-	    %QW96 := REAL_TO_INT(#ref / 50.0 * 27648.0);
+	    %QW96 := REAL_TO_INT(#refHz / 50.0 * 27648.0);
 	ELSE
 	    %QW96 := 0;
 	END_IF;
@@ -105,10 +105,10 @@ BEGIN
 	"MB_DATA".reg[13] := "MB_DATA".reg[3];
 	// Sin borne AM: se informa la velocidad que se le manda al variador (Hz x10)
 	IF #marcha THEN
-	    "MB_DATA".reg[14] := REAL_TO_INT(#ref * 10.0);
+	    "MB_DATA".reg[14] := REAL_TO_INT(#refHz * 10.0);
 	ELSE
 	    "MB_DATA".reg[14] := 0;
 	END_IF;
-	"MB_DATA".reg[15] := SEL(G := #falla, IN0 := 0, IN1 := 1);
+	"MB_DATA".reg[15] := SEL(G := #hayFalla, IN0 := 0, IN1 := 1);
 	
 END_FUNCTION_BLOCK
