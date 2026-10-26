@@ -1,0 +1,114 @@
+// Programa de la bomba para el tablero PLC03 (S7-1200 + SM 1234 + D700)
+// Importar en TIA: External source files > Add new external file > este archivo,
+// clic derecho > Generate blocks from source.
+// Despues, en Main [OB1]: segmento 1 = MB_SERVER, segmento 2 = llamada a FB_Bomba.
+//
+// Registros Modbus (MB_DATA.reg):
+//   0 marcha manual | 1 modo auto | 2 setpoint % x10 | 3 vel. manual Hz x10
+//   4 nivel % x10   | 5 watchdog  | 10..15 estado hacia la Raspberry
+//
+// Salidas: %Q0.0 -> STF del D700 (marcha), %QW96 -> SM 1234 AQ0 -> borne 2 (0-10 V = 0-50 Hz)
+// Sin retorno AM ni contacto de falla en este tablero.
+
+DATA_BLOCK "MB_DATA"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      reg : Array[0..19] of Int;
+   END_VAR
+
+BEGIN
+   reg[1] := 1;
+   reg[2] := 700;
+   reg[3] := 350;
+
+END_DATA_BLOCK
+
+DATA_BLOCK "MB_CONN"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      con : TCON_IP_v4;
+   END_VAR
+
+BEGIN
+   con.InterfaceId := 64;
+   con.ID := 1;
+   con.ConnectionType := 16#0B;
+   con.ActiveEstablished := FALSE;
+   con.RemotePort := 0;
+   con.LocalPort := 502;
+
+END_DATA_BLOCK
+
+FUNCTION_BLOCK "FB_Bomba"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR 
+      wdTimer : IEC_TIMER;
+      wdAnterior : Int;
+      comOk : Bool;
+      marcha : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      nivel : Real;
+      setpoint : Real;
+      ref : Real;
+      falla : Bool;
+   END_VAR
+
+BEGIN
+	// Watchdog: si la Raspberry deja de escribir el registro 5 durante 5 s, se detiene la bomba
+	#wdTimer.TON(IN := ("MB_DATA".reg[5] = #wdAnterior), PT := T#5S);
+	#wdAnterior := "MB_DATA".reg[5];
+	#comOk := NOT #wdTimer.Q;
+	
+	#nivel := INT_TO_REAL("MB_DATA".reg[4]) / 10.0;
+	#setpoint := INT_TO_REAL("MB_DATA".reg[2]) / 10.0;
+	
+	IF "MB_DATA".reg[1] <> 0 THEN
+	    // Automatico: llena hasta el setpoint con histeresis de 3 %
+	    IF #nivel >= #setpoint THEN
+	        #marcha := FALSE;
+	    ELSIF #nivel < #setpoint - 3.0 THEN
+	        #marcha := TRUE;
+	    END_IF;
+	    #ref := LIMIT(MN := 20.0, IN := 4.0 * (#setpoint - #nivel), MX := 50.0);
+	ELSE
+	    // Manual: marcha y velocidad desde el dashboard
+	    #marcha := "MB_DATA".reg[0] <> 0;
+	    #ref := LIMIT(MN := 0.0, IN := INT_TO_REAL("MB_DATA".reg[3]) / 10.0, MX := 50.0);
+	END_IF;
+	
+	// Sin contacto de falla cableado: la falla es perder la comunicacion
+	#falla := NOT #comOk;
+	IF #falla THEN
+	    #marcha := FALSE;
+	END_IF;
+	
+	// Salidas al D700. Con la bomba parada la referencia queda en 0 V
+	// (asi tambien funciona con Pr.79 = 4, marcha desde la tecla RUN del panel)
+	%Q0.0 := #marcha;
+	IF #marcha THEN
+	    %QW96 := REAL_TO_INT(#ref / 50.0 * 27648.0);
+	ELSE
+	    %QW96 := 0;
+	END_IF;
+	
+	// Estado hacia la Raspberry
+	"MB_DATA".reg[10] := SEL(G := #marcha, IN0 := 0, IN1 := 1);
+	"MB_DATA".reg[11] := SEL(G := "MB_DATA".reg[1] <> 0, IN0 := 0, IN1 := 1);
+	"MB_DATA".reg[12] := "MB_DATA".reg[2];
+	"MB_DATA".reg[13] := "MB_DATA".reg[3];
+	// Sin borne AM: se informa la velocidad que se le manda al variador (Hz x10)
+	IF #marcha THEN
+	    "MB_DATA".reg[14] := REAL_TO_INT(#ref * 10.0);
+	ELSE
+	    "MB_DATA".reg[14] := 0;
+	END_IF;
+	"MB_DATA".reg[15] := SEL(G := #falla, IN0 := 0, IN1 := 1);
+	
+END_FUNCTION_BLOCK
