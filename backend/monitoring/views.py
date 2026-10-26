@@ -6,7 +6,8 @@ from django.templatetags.static import static
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -41,12 +42,18 @@ SEED_READINGS_COUNT = 50
 
 @login_required
 def dashboard(request):
-    devices = devices_for(request.user).filter(is_active=True).prefetch_related("sensors").order_by("name")
+    active_sensors = Sensor.objects.filter(is_active=True).select_related("widget").order_by("widget__position", "variable")
+    devices = (
+        devices_for(request.user)
+        .filter(is_active=True)
+        .prefetch_related(Prefetch("sensors", queryset=active_sensors))
+        .order_by("position", "name")
+    )
 
     seed_data = {}
     featured = []
     for device in devices:
-        for sensor in device.sensors.filter(is_active=True):
+        for sensor in device.sensors.all():
             readings = list(sensor.readings.order_by("-timestamp")[:SEED_READINGS_COUNT])
             readings.reverse()
             seed_data[sensor.id] = [{"t": r.timestamp.isoformat(), "v": r.value} for r in readings]
@@ -64,6 +71,36 @@ def dashboard(request):
         "featured": featured,
     }
     return render(request, "monitoring/dashboard.html", context)
+
+
+@login_required
+@require_POST
+def dashboard_order(request):
+    """Guarda el orden de tarjetas y gadgets que se arrastró en el dashboard.
+
+    Body: {"devices": [id, ...], "sensors": [id, ...]} en el orden nuevo."""
+    try:
+        body = json.loads(request.body)
+        device_ids = [int(pk) for pk in body.get("devices", [])]
+        sensor_ids = [int(pk) for pk in body.get("sensors", [])]
+    except (ValueError, TypeError, AttributeError, json.JSONDecodeError):
+        return JsonResponse({"error": "Orden inválido."}, status=400)
+
+    visible = devices_for(request.user)
+    devices = {d.pk: d for d in visible.filter(pk__in=device_ids)}
+    sensors = {s.pk: s for s in Sensor.objects.filter(pk__in=sensor_ids, device__in=visible)}
+
+    with transaction.atomic():
+        for position, pk in enumerate(device_ids):
+            if pk in devices:
+                Device.objects.filter(pk=pk).update(position=position)
+        for position, pk in enumerate(sensor_ids):
+            if pk in sensors:
+                widget = sensors[pk].get_widget()
+                widget.position = position
+                widget.save(update_fields=["position"])
+
+    return JsonResponse({"saved": True})
 
 
 @login_required

@@ -36,6 +36,7 @@ class WidgetForm(forms.ModelForm):
             "slider_step",
             "setpoint_sensor",
             "featured",
+            "position",
         ]
         labels = {
             "widget_type": "Tipo de gadget",
@@ -47,6 +48,7 @@ class WidgetForm(forms.ModelForm):
             "slider_step": "Incremento (Slider)",
             "setpoint_sensor": "Sensor de consigna (Estanque)",
             "featured": "Mostrar en indicadores",
+            "position": "Posición",
         }
 
     def __init__(self, *args, setpoint_sensors=None, **kwargs):

@@ -75,6 +75,7 @@ class WidgetInline(admin.StackedInline):
         "slider_step",
         "setpoint_sensor",
         "featured",
+        "position",
     )
 
 

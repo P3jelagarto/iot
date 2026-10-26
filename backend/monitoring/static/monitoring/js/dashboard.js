@@ -314,6 +314,71 @@
     el.textContent = ageSeconds <= 1 ? "Actualizado ahora" : `Último dato hace ${ageSeconds} s`;
   }
 
+  // --- Editar orden: arrastrar tarjetas y gadgets (SortableJS) ---
+
+  const orderToggle = document.querySelector('[data-role="order-toggle"]');
+  const orderHint = document.querySelector('[data-role="order-hint"]');
+  const sortables = [];
+
+  function currentOrder() {
+    return {
+      devices: [...root.querySelectorAll(".device-card")].map((el) => el.dataset.deviceId),
+      sensors: [...root.querySelectorAll(".sensor-card")].map((el) => el.dataset.sensorId),
+    };
+  }
+
+  async function saveOrder() {
+    try {
+      const res = await fetch(root.dataset.orderUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify(currentOrder()),
+      });
+      return res.ok;
+    } catch (err) {
+      console.error("Saving order failed", err);
+      return false;
+    }
+  }
+
+  function startEditing() {
+    const options = { animation: 180, ghostClass: "sortable-ghost", chosenClass: "sortable-chosen" };
+    sortables.push(new Sortable(root, { ...options, draggable: ".device-card" }));
+    // Cada gadget se mueve solo dentro de su propio dispositivo.
+    root.querySelectorAll(".sensor-grid").forEach((grid) => {
+      sortables.push(new Sortable(grid, { ...options, draggable: ".sensor-card" }));
+    });
+    root.classList.add("editing-order");
+    orderHint.hidden = false;
+    orderToggle.textContent = "Guardar orden";
+    orderToggle.classList.replace("btn-secondary", "btn");
+  }
+
+  async function stopEditing() {
+    orderToggle.disabled = true;
+    orderToggle.textContent = "Guardando…";
+    const ok = await saveOrder();
+    orderToggle.disabled = false;
+    if (!ok) {
+      orderToggle.textContent = "Reintentar guardar";
+      return;
+    }
+    sortables.splice(0).forEach((sortable) => sortable.destroy());
+    root.classList.remove("editing-order");
+    orderHint.hidden = true;
+    orderToggle.textContent = "Editar orden";
+    orderToggle.classList.replace("btn", "btn-secondary");
+  }
+
+  if (orderToggle && window.Sortable) {
+    orderToggle.addEventListener("click", () => {
+      if (root.classList.contains("editing-order")) stopEditing();
+      else startEditing();
+    });
+  } else if (orderToggle) {
+    orderToggle.hidden = true;
+  }
+
   poll();
   setInterval(poll, POLL_INTERVAL_MS);
 })();
