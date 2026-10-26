@@ -412,6 +412,19 @@ Las salidas DQ se alimentan con los 24 V del propio variador (borne PC, máx.
 100 mA). Por eso: sin el variador encendido las salidas no prenden, y `3L+` no
 debe recibir también la fuente Siemens.
 
+### Resultado de las pruebas (26-10)
+
+- Referencia analógica OK: forzando `%QW96:P` = 13824 el D700 marca 24.3 Hz.
+- Variador y bomba OK en modo PU (Pr.79 = 1, tecla RUN).
+- **STF no arranca**: el LED de `DQ a.0` se enciende, pero el variador no recibe
+  la marcha. Lo más probable es que falten los 24 V en `3L+` (cable de PC a la
+  bornera 3 o de la bornera a `3L+`). Mide con multímetro `3L+`–`3M` y `STF`–`SD`
+  (los dos ~24 V con la salida activa).
+- **Plan B mientras tanto: Pr.79 = 4.** La marcha se da con la tecla RUN del
+  panel (una vez) y la velocidad viene del borne 2. Como el segmento 14 pone
+  `Ref_VDF` en 0 cuando `Marcha_VDF` está apagada, la marcha del dashboard
+  igual detiene la bomba (0 Hz). Cuando funcione STF, vuelve a Pr.79 = 2.
+
 ### Cambios en el programa
 
 1. **Tabla de variables:** `Ref_VDF` pasa a `%QW96`, o la dirección que muestre
