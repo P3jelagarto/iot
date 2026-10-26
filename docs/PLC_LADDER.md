@@ -398,6 +398,20 @@ Lo que trae ese tablero es distinto de lo que supone esta guía:
 | Variador | FR-D700 | FR-D720S-042-NA (es un D700, los parámetros sirven igual) |
 | Cableado al variador | STF, SD, 2, 5, AM, A, C | Solo STF, SD, PC, 2 y 5. **AM y A/B/C libres** |
 
+### Cableado confirmado (bornera intermedia)
+
+| Variador | Bornera | PLC | Para qué |
+|---|---|---|---|
+| 5 | 1 | SM 1234 AQ `0M` | Común de la referencia |
+| 2 | 2 | SM 1234 AQ `0` | Referencia 0-10 V = 0-50 Hz |
+| PC (+24 V interno) | 3 | `3L+` | El variador alimenta las salidas DQ del PLC |
+| SD (0 V interno) | 4 | `3M` | |
+| STF | 5 | `DQ a.0` (`%Q0.0`) | Marcha |
+
+Las salidas DQ se alimentan con los 24 V del propio variador (borne PC, máx.
+100 mA). Por eso: sin el variador encendido las salidas no prenden, y `3L+` no
+debe recibir también la fuente Siemens.
+
 ### Cambios en el programa
 
 1. **Tabla de variables:** `Ref_VDF` pasa a `%QW96`, o la dirección que muestre
