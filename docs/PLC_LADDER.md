@@ -384,3 +384,69 @@ relé de interfaz, igual que la marcha:
 
 El slider "Velocidad manual" del dashboard sigue funcionando: el PLC elige la
 velocidad fija más cercana.
+
+---
+
+## Tablero PLC03 del laboratorio
+
+Lo que trae ese tablero es distinto de lo que supone esta guía:
+
+| Qué | Esta guía | Tablero PLC03 |
+|---|---|---|
+| IP del PLC | `192.168.0.1` | `10.41.32.2` (no la cambies, es del laboratorio) |
+| Salida analógica | SB 1232 (`%QW80`) | SM 1234 AI/AQ, salida AQ0 (`%QW96` de fábrica) |
+| Variador | FR-D700 | FR-D720S-042-NA (es un D700, los parámetros sirven igual) |
+| Cableado al variador | STF, SD, 2, 5, AM, A, C | Solo STF, SD, PC, 2 y 5. **AM y A/B/C libres** |
+
+### Cambios en el programa
+
+1. **Tabla de variables:** `Ref_VDF` pasa a `%QW96`, o la dirección que muestre
+   el SM 1234 en **Configuración de dispositivos**. Ahí mismo pon su
+   salida analógica 0 en **Tensión, ±10 V** (0-10 V = 0-27648, igual que antes).
+   Revisa también a qué `%Q` llega el cable de STF y usa esa dirección para `Marcha_VDF`.
+2. **Sin señal de falla:** `Falla_VDF` (`%I0.0`) queda siempre en FALSE, así
+   que los segmentos 10 y 11 funcionan sin cambios. La falla del dashboard
+   solo avisa si se corta la comunicación con la Raspberry.
+3. **Sin retorno de frecuencia:** el segmento 16 se reemplaza por esto, que
+   informa la velocidad que se le está mandando al variador (Hz ×10):
+
+```
+   "Marcha_VDF"   ┌──── MUL Real ────┐      ┌──── CONV Real→Int ────┐
+  ──┤ ├───────────┤EN             ENO├──────┤EN                  ENO├──
+  "Control".ref ──┤IN1          OUT├─ tmp ──┤IN                  OUT├─ "MB_DATA".reg[14]
+           10.0 ──┤IN2              │       └───────────────────────┘
+                  └─────────────────┘
+   "Marcha_VDF"   ┌──── MOVE ────┐
+  ──┤/├───────────┤EN         ENO├──
+              0 ──┤IN       OUT1├─ "MB_DATA".reg[14]
+                  └──────────────┘
+```
+
+(`tmp` es `"Control".tmpReal`.) Si te dejan agregar dos cables, **AM → AI0
+del SM 1234** y **5 → M de esa entrada**, vuelve al segmento 16 original con
+`AI_Frecuencia` en `%IW96` (entrada 0 del SM 1234 en 0-10 V) y tendrás la frecuencia real.
+
+### Variador
+
+- Puente **SINK/SOURCE en SOURCE**, con el variador apagado. Las salidas del
+  S7-1200 entregan +24 V, así que en SINK el STF no se activa. Con SOURCE y
+  fuente externa: salida del PLC → STF, `M` del PLC → SD.
+- Parámetros: los del paso 3.1 de [PUESTA_EN_MARCHA.md](PUESTA_EN_MARCHA.md).
+  **Pr.73 = 0**, porque de fábrica el borne 2 viene en 0-5 V.
+
+### Red
+
+La Raspberry tiene que quedar en la misma red que el PLC. Conéctala a un puerto
+libre del switch CSM 1277. Antes de elegir la IP, revisa que nadie la esté usando
+(`ping 10.41.32.50` no debe responder):
+
+```
+sudo nmcli connection modify plc ipv4.addresses 10.41.32.50/24
+sudo nmcli connection up plc
+ping -c 3 10.41.32.2
+cd ~/iot
+sed -i 's/^PLC_HOST=.*/PLC_HOST=10.41.32.2/' .env
+```
+
+Antes de cargar tu programa al PLC03, pídele permiso al profesor y respalda
+el programa que tiene (**En línea → Cargar de dispositivo**).
