@@ -246,24 +246,18 @@
       });
 
       data.devices.forEach((dev) => {
-        const card = document.querySelector(`.device-card[data-device-id="${dev.id}"]`);
-        if (!card) return;
-        const badge = card.querySelector('[data-role="status-badge"]');
-        if (!badge) return;
-
-        if (!dev.last_seen_at) {
-          badge.textContent = "sin datos";
-          badge.className = "badge";
-          return;
+        let status = "";
+        let label = "sin datos";
+        if (dev.last_seen_at) {
+          const ageSeconds = (serverNow - new Date(dev.last_seen_at).getTime()) / 1000;
+          const online = ageSeconds <= ONLINE_THRESHOLD_SECONDS;
+          status = online ? "online" : "offline";
+          label = online ? "en línea" : "sin señal";
         }
-        const ageSeconds = (serverNow - new Date(dev.last_seen_at).getTime()) / 1000;
-        if (ageSeconds <= ONLINE_THRESHOLD_SECONDS) {
-          badge.textContent = "en línea";
-          badge.className = "badge online";
-        } else {
-          badge.textContent = "sin señal";
-          badge.className = "badge offline";
-        }
+        document.querySelectorAll(`[data-role="status-dot"][data-device-id="${dev.id}"]`).forEach((dot) => {
+          dot.className = `status-dot ${status}`.trim();
+          dot.title = label;
+        });
       });
     } catch (err) {
       console.error("Polling failed", err);
@@ -321,10 +315,7 @@
   const sortables = [];
 
   function currentOrder() {
-    return {
-      devices: [...root.querySelectorAll(".device-card")].map((el) => el.dataset.deviceId),
-      sensors: [...root.querySelectorAll(".sensor-card")].map((el) => el.dataset.sensorId),
-    };
+    return { sensors: [...root.querySelectorAll(".sensor-card")].map((el) => el.dataset.sensorId) };
   }
 
   async function saveOrder() {
@@ -343,11 +334,7 @@
 
   function startEditing() {
     const options = { animation: 180, ghostClass: "sortable-ghost", chosenClass: "sortable-chosen" };
-    sortables.push(new Sortable(root, { ...options, draggable: ".device-card" }));
-    // Cada gadget se mueve solo dentro de su propio dispositivo.
-    root.querySelectorAll(".sensor-grid").forEach((grid) => {
-      sortables.push(new Sortable(grid, { ...options, draggable: ".sensor-card" }));
-    });
+    sortables.push(new Sortable(root, { ...options, draggable: ".sensor-card" }));
     root.classList.add("editing-order");
     orderHint.hidden = false;
     orderToggle.textContent = "Guardar orden";
