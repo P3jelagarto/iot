@@ -51,15 +51,18 @@ def dashboard(request):
     )
 
     seed_data = {}
-    featured = []
+    gadgets = []
     for device in devices:
         for sensor in device.sensors.all():
             readings = list(sensor.readings.order_by("-timestamp")[:SEED_READINGS_COUNT])
             readings.reverse()
             seed_data[sensor.id] = [{"t": r.timestamp.isoformat(), "v": r.value} for r in readings]
-            widget = sensor.get_widget()
-            if widget.featured:
-                featured.append((sensor, widget))
+            gadgets.append((sensor, sensor.get_widget()))
+
+    # Cada gadget es una tarjeta suelta: el orden es global en todo el dashboard
+    # (y a igual posición, se agrupan por dispositivo).
+    gadgets.sort(key=lambda item: item[1].position)
+    featured = [item for item in gadgets if item[1].featured]
 
     # Indicadores: primero las mediciones, después los estados (botones y LEDs).
     state_types = {Widget.TYPE_BUTTON, Widget.TYPE_LED}
@@ -68,6 +71,7 @@ def dashboard(request):
     context = {
         "devices": devices,
         "seed_data": seed_data,
+        "gadgets": gadgets,
         "featured": featured,
     }
     return render(request, "monitoring/dashboard.html", context)
@@ -78,7 +82,7 @@ def dashboard(request):
 def dashboard_order(request):
     """Guarda el orden de tarjetas y gadgets que se arrastró en el dashboard.
 
-    Body: {"devices": [id, ...], "sensors": [id, ...]} en el orden nuevo."""
+    Body: {"sensors": [id, ...]} en el orden nuevo (también acepta "devices")."""
     try:
         body = json.loads(request.body)
         device_ids = [int(pk) for pk in body.get("devices", [])]
