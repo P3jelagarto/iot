@@ -23,7 +23,7 @@ from .forms import (
     UserCreateForm,
     WidgetForm,
 )
-from .models import Device, ManualEntry, Product, ProductType, Profile, Sensor, SiteBranding
+from .models import Device, ManualEntry, Product, ProductType, Profile, Sensor, SiteBranding, Widget
 from .mqtt_publish import publish_command
 from .permissions import (
     admin_or_global_required,
@@ -44,15 +44,24 @@ def dashboard(request):
     devices = devices_for(request.user).filter(is_active=True).prefetch_related("sensors").order_by("name")
 
     seed_data = {}
+    featured = []
     for device in devices:
         for sensor in device.sensors.filter(is_active=True):
             readings = list(sensor.readings.order_by("-timestamp")[:SEED_READINGS_COUNT])
             readings.reverse()
             seed_data[sensor.id] = [{"t": r.timestamp.isoformat(), "v": r.value} for r in readings]
+            widget = sensor.get_widget()
+            if widget.featured:
+                featured.append((sensor, widget))
+
+    # Indicadores: primero las mediciones, después los estados (botones y LEDs).
+    state_types = {Widget.TYPE_BUTTON, Widget.TYPE_LED}
+    featured.sort(key=lambda item: item[1].widget_type in state_types)
 
     context = {
         "devices": devices,
         "seed_data": seed_data,
+        "featured": featured,
     }
     return render(request, "monitoring/dashboard.html", context)
 
@@ -172,15 +181,20 @@ def device_regenerate_token(request, pk):
 def sensor_widget_edit(request, pk):
     sensor = get_object_or_404(Sensor.objects.filter(device__in=devices_for(request.user)), pk=pk)
     widget = sensor.get_widget()
+    setpoint_sensors = (
+        Sensor.objects.filter(device__in=devices_for(request.user), is_active=True)
+        .exclude(pk=sensor.pk)
+        .select_related("device")
+    )
 
     if request.method == "POST":
-        form = WidgetForm(request.POST, instance=widget)
+        form = WidgetForm(request.POST, instance=widget, setpoint_sensors=setpoint_sensors)
         if form.is_valid():
             form.save()
             messages.success(request, f"Gadget de «{sensor}» actualizado.")
             return redirect("monitoring:dashboard")
     else:
-        form = WidgetForm(instance=widget)
+        form = WidgetForm(instance=widget, setpoint_sensors=setpoint_sensors)
 
     context = {
         "sensor": sensor,

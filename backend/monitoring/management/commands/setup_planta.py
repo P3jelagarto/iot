@@ -33,18 +33,18 @@ PLANT_DEVICES = {
         "Estanque (ESP32)",
         "esp32",
         [
-            ("nivel", "%", Widget.TYPE_LINE_CHART, {}),
+            ("nivel", "%", Widget.TYPE_TANK, {"min_value": 0, "max_value": 100, "featured": True}),
         ],
     ),
     PLC_SLUG: (
         "Bomba (PLC S7-1200 + VDF D700)",
         "s7-1200",
         [
-            ("bomba_marcha", "", Widget.TYPE_BUTTON, {"button_on_value": 1, "button_off_value": 0}),
-            ("modo_auto", "", Widget.TYPE_BUTTON, {"button_on_value": 1, "button_off_value": 0}),
+            ("bomba_marcha", "", Widget.TYPE_BUTTON, {"button_on_value": 1, "button_off_value": 0, "featured": True}),
+            ("modo_auto", "", Widget.TYPE_BUTTON, {"button_on_value": 1, "button_off_value": 0, "featured": True}),
             ("setpoint_nivel", "%", Widget.TYPE_SLIDER, {"min_value": 0, "max_value": 100, "slider_step": 5}),
             ("velocidad_ref", "Hz", Widget.TYPE_SLIDER, {"min_value": 0, "max_value": 50, "slider_step": 1}),
-            ("frecuencia", "Hz", Widget.TYPE_METER, {"min_value": 0, "max_value": 50}),
+            ("frecuencia", "Hz", Widget.TYPE_GAUGE, {"min_value": 0, "max_value": 50, "featured": True}),
             ("falla", "", Widget.TYPE_LED, {"led_on_threshold": 1}),
         ],
     ),
@@ -84,6 +84,12 @@ class Command(BaseCommand):
                 Widget.objects.update_or_create(
                     sensor=sensor, defaults={"widget_type": widget_type, **widget_options}
                 )
+
+        # El estanque dibuja el setpoint del PLC como línea de consigna.
+        setpoint = Sensor.objects.get(device=devices[PLC_SLUG], variable="setpoint_nivel")
+        Widget.objects.filter(sensor__device=devices[ESP32_SLUG], sensor__variable="nivel").update(
+            setpoint_sensor=setpoint
+        )
 
         self._ensure_viewer(options["viewer_username"], options["viewer_password"])
 

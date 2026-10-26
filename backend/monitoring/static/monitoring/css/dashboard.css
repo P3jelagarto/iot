@@ -13,6 +13,9 @@
   --series-1: #22d3ee;
   --status-good: #22c55e;
   --status-critical: #ef4444;
+  --water-top: #22d3ee;
+  --water-bottom: #0e7490;
+  --setpoint: #fbbf24;
   --meter-track: #164e63;
   --brand-primary: #0891b2;
   --brand-accent: #22d3ee;
@@ -161,6 +164,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 20px;
+  align-items: start;
 }
 
 .device-card {
@@ -210,6 +214,7 @@ h1 {
 
 .badge.online::before {
   background: var(--status-good);
+  animation: pulse 2s ease-out infinite;
 }
 
 .badge.offline::before {
@@ -218,7 +223,7 @@ h1 {
 
 .sensor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
 }
 
@@ -226,6 +231,18 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
+  background: rgba(10, 15, 23, 0.35);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.sensor-card[data-widget-type="tank"],
+.sensor-card[data-widget-type="line_chart"] {
+  grid-column: 1 / -1;
+}
+
+.sensor-card.alarm {
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .sensor-card-header {
@@ -312,28 +329,53 @@ h1 {
 }
 
 .led-dot.lit {
-  background: var(--status-good);
-  box-shadow: 0 0 8px var(--status-good);
+  background: var(--status-critical);
+  box-shadow: 0 0 10px var(--status-critical);
+  animation: blink 1s steps(2, start) infinite;
 }
 
 /* --- Button gadget (control) --- */
 
 .gadget-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 14px;
-  border-radius: 8px;
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--page-plane);
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  font-family: inherit;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.gadget-button::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.gadget-button:not(:disabled):hover {
+  border-color: var(--text-muted);
 }
 
 .gadget-button.lit {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: var(--status-good);
+}
+
+.gadget-button.lit::before {
   background: var(--status-good);
-  border-color: var(--status-good);
-  color: #fff;
+  animation: pulse 2s ease-out infinite;
 }
 
 .gadget-button.pending {
@@ -346,6 +388,312 @@ h1 {
 .gadget-slider {
   width: 100%;
   accent-color: var(--series-1);
+}
+
+/* --- Indicadores (fila de arriba) --- */
+
+.page-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand-accent);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.07), transparent 60%);
+}
+
+.kpi-state {
+  border-left-color: var(--text-muted);
+  background: rgba(10, 15, 23, 0.35);
+}
+
+.kpi-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-value small {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.kpi-bar {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+
+.kpi-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--series-1);
+  transition: width 0.6s ease;
+}
+
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.state-chip::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.state-chip.on {
+  color: var(--status-good);
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.state-chip.on::before {
+  background: var(--status-good);
+  animation: pulse 2s ease-out infinite;
+}
+
+.state-chip.alarm {
+  color: var(--status-critical);
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.state-chip.alarm::before {
+  background: var(--status-critical);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+/* --- Estanque --- */
+
+.tank-widget {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.tank {
+  position: relative;
+  height: 200px;
+  border: 2px solid var(--baseline);
+  border-top-width: 1px;
+  border-radius: 6px 6px 18px 18px;
+  background:
+    repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), var(--gridline) calc(25% - 1px) 25%),
+    var(--page-plane);
+  overflow: hidden;
+}
+
+.tank-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: linear-gradient(to top, var(--water-bottom), var(--water-top));
+  opacity: 0.85;
+  transition: height 0.8s ease;
+}
+
+/* Ola: una sinusoide que se desplaza sobre la superficie del agua. */
+.tank-fill::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -9px;
+  height: 10px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 10'%3E%3Cpath d='M0 5 Q20 0 40 5 T80 5 V10 H0Z' fill='%2322d3ee'/%3E%3C/svg%3E") repeat-x;
+  background-size: 80px 10px;
+  animation: wave 3s linear infinite;
+}
+
+.tank-scale {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  right: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.tank-setpoint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px dashed var(--setpoint);
+  transition: bottom 0.6s ease;
+}
+
+.tank-setpoint span {
+  position: absolute;
+  left: 6px;
+  bottom: 3px;
+  color: var(--setpoint);
+  font-size: 11px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.tank-readout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.tank-trend {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tank-trend-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+/* Chart.js necesita un contenedor de alto fijo para no crecer en cada resize. */
+.tank-trend-canvas {
+  position: relative;
+  height: 180px;
+}
+
+.sensor-card .tank-trend canvas {
+  max-height: none;
+}
+
+/* --- Velocímetro --- */
+
+.gauge {
+  position: relative;
+  max-width: 220px;
+  margin: 4px auto 0;
+}
+
+.gauge svg {
+  display: block;
+  width: 100%;
+}
+
+.gauge-track,
+.gauge-fill {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.gauge-track {
+  stroke: var(--meter-track);
+}
+
+.gauge-fill {
+  stroke: var(--series-1);
+  stroke-dasharray: 0 100;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.gauge-needle {
+  transform-origin: 100px 100px;
+  transform: rotate(-90deg);
+  transition: transform 0.6s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.gauge-needle line {
+  stroke: var(--text-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.gauge-hub {
+  fill: var(--text-primary);
+}
+
+.gauge svg text {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.gauge-value {
+  text-align: center;
+  margin-top: -2px;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+  100% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+}
+
+@keyframes blink {
+  to { opacity: 0.35; }
+}
+
+@keyframes wave {
+  to { background-position-x: 80px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .tank-widget {
+    grid-template-columns: 1fr;
+  }
 }
 
 .empty-state {

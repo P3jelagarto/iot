@@ -62,6 +62,7 @@ class SensorInline(admin.TabularInline):
 
 class WidgetInline(admin.StackedInline):
     model = Widget
+    fk_name = "sensor"
     extra = 0
     max_num = 1
     fields = (
@@ -72,6 +73,8 @@ class WidgetInline(admin.StackedInline):
         "button_on_value",
         "button_off_value",
         "slider_step",
+        "setpoint_sensor",
+        "featured",
     )
 
 

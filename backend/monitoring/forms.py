@@ -34,6 +34,8 @@ class WidgetForm(forms.ModelForm):
             "button_on_value",
             "button_off_value",
             "slider_step",
+            "setpoint_sensor",
+            "featured",
         ]
         labels = {
             "widget_type": "Tipo de gadget",
@@ -43,7 +45,15 @@ class WidgetForm(forms.ModelForm):
             "button_on_value": "Valor al encender (Botón)",
             "button_off_value": "Valor al apagar (Botón)",
             "slider_step": "Incremento (Slider)",
+            "setpoint_sensor": "Sensor de consigna (Estanque)",
+            "featured": "Mostrar en indicadores",
         }
+
+    def __init__(self, *args, setpoint_sensors=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Solo se puede elegir como consigna un sensor que el usuario ya ve.
+        if setpoint_sensors is not None:
+            self.fields["setpoint_sensor"].queryset = setpoint_sensors
 
 
 class UserCreateForm(UserCreationForm):

@@ -3,13 +3,42 @@
 {% block title %}Dashboard - {{ block.super }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Dashboard</h1>
+  <div>
+    <h1>Dashboard</h1>
+    <p class="page-subtitle" data-role="last-update">Esperando datos…</p>
+  </div>
   {% if user_role != "viewer" %}
   <a class="btn" href="{% url 'monitoring:device-create' %}">+ Agregar dispositivo</a>
   {% endif %}
 </div>
 
 {{ seed_data|json_script:"seed-data" }}
+
+{% if featured %}
+{% localize off %}
+<div class="kpi-row">
+  {% for sensor, widget in featured %}
+    {% if widget.widget_type == "button" %}
+    <div class="kpi kpi-state" data-sensor-id="{{ sensor.id }}" data-kind="button" data-on-value="{{ widget.button_on_value }}">
+      <span class="kpi-label">{{ sensor.label }}</span>
+      <span class="state-chip" data-role="kpi-state">--</span>
+    </div>
+    {% elif widget.widget_type == "led" %}
+    <div class="kpi kpi-state" data-sensor-id="{{ sensor.id }}" data-kind="led" data-threshold="{{ widget.led_on_threshold }}">
+      <span class="kpi-label">{{ sensor.label }}</span>
+      <span class="state-chip" data-role="kpi-state">--</span>
+    </div>
+    {% else %}
+    <div class="kpi" data-sensor-id="{{ sensor.id }}" data-kind="value" data-min="{{ widget.min_value }}" data-max="{{ widget.max_value }}">
+      <span class="kpi-label">{{ sensor.label }}</span>
+      <span class="kpi-value"><span data-role="kpi-value">--</span> <small>{{ sensor.unit }}</small></span>
+      <span class="kpi-bar"><span data-role="kpi-bar"></span></span>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endlocalize %}
+{% endif %}
 
 <div id="dashboard-root" class="device-grid"
      data-api-url="{% url 'monitoring:api-latest' %}"
@@ -59,6 +88,41 @@
                       {% if user_role == "viewer" %}disabled{% endif %}>
                 --
               </button>
+
+            {% elif widget.widget_type == "tank" %}
+              <div class="tank-widget">
+                <div class="tank" data-role="tank" data-min="{{ widget.min_value }}" data-max="{{ widget.max_value }}">
+                  <div class="tank-fill" data-role="tank-fill"></div>
+                  <div class="tank-scale" aria-hidden="true">
+                    <span>{{ widget.max_value|floatformat:"-1" }}</span><span>{{ widget.min_value|floatformat:"-1" }}</span>
+                  </div>
+                  {% if widget.setpoint_sensor_id %}
+                  <div class="tank-setpoint" data-role="tank-setpoint" data-setpoint-sensor-id="{{ widget.setpoint_sensor_id }}" hidden>
+                    <span data-role="tank-setpoint-label">SP</span>
+                  </div>
+                  {% endif %}
+                  <div class="tank-readout" data-role="latest-value">--</div>
+                </div>
+                <div class="tank-trend">
+                  <span class="tank-trend-label">Tendencia</span>
+                  <div class="tank-trend-canvas"><canvas data-role="chart"></canvas></div>
+                </div>
+              </div>
+
+            {% elif widget.widget_type == "gauge" %}
+              <div class="gauge" data-role="gauge" data-min="{{ widget.min_value }}" data-max="{{ widget.max_value }}">
+                <svg viewBox="0 0 200 122" aria-hidden="true">
+                  <path class="gauge-track" d="M20 100 A80 80 0 0 1 180 100" pathLength="100"></path>
+                  <path class="gauge-fill" data-role="gauge-fill" d="M20 100 A80 80 0 0 1 180 100" pathLength="100"></path>
+                  <g class="gauge-needle" data-role="gauge-needle">
+                    <line x1="100" y1="100" x2="100" y2="34"></line>
+                  </g>
+                  <circle class="gauge-hub" cx="100" cy="100" r="6"></circle>
+                  <text x="20" y="121" text-anchor="middle">{{ widget.min_value|floatformat:"-1" }}</text>
+                  <text x="180" y="121" text-anchor="middle">{{ widget.max_value|floatformat:"-1" }}</text>
+                </svg>
+                <div class="gauge-value sensor-value" data-role="latest-value">--</div>
+              </div>
 
             {% elif widget.widget_type == "slider" %}
               <div class="sensor-value" data-role="latest-value">--</div>
