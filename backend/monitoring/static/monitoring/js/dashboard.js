@@ -30,6 +30,17 @@
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
 
+  function formatValue(v) {
+    return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  }
+
+  function percentOf(value, el) {
+    const min = parseFloat(el.dataset.min);
+    const max = parseFloat(el.dataset.max);
+    if (!(max > min)) return 0;
+    return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+  }
+
   function getCookie(name) {
     const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
     return match ? decodeURIComponent(match[2]) : null;
@@ -113,7 +124,7 @@
     const sensorId = card.dataset.sensorId;
     const widgetType = card.dataset.widgetType;
 
-    if (widgetType === "line_chart") {
+    if (widgetType === "line_chart" || widgetType === "tank") {
       const canvas = card.querySelector('[data-role="chart"]');
       const seed = seedData[sensorId] || [];
       charts[sensorId] = createChart(canvas, seed);
@@ -154,6 +165,14 @@
       if (!res.ok) return;
       const data = await res.json();
       const serverNow = new Date(data.server_time).getTime();
+      const valuesById = {};
+      data.sensors.forEach((s) => {
+        if (s.value !== null) valuesById[s.id] = s.value;
+      });
+
+      updateKpis(valuesById);
+      updateSetpoints(valuesById);
+      updateLastSeen(data.devices, serverNow);
 
       data.sensors.forEach((s) => {
         if (s.value === null) return;
@@ -162,9 +181,20 @@
         const widgetType = card.dataset.widgetType;
 
         const valueEl = card.querySelector('[data-role="latest-value"]');
-        if (valueEl) valueEl.textContent = `${s.value} ${s.unit || ""}`.trim();
+        if (valueEl) valueEl.textContent = `${formatValue(s.value)} ${s.unit || ""}`.trim();
 
-        if (widgetType === "line_chart") {
+        if (widgetType === "tank") {
+          const tank = card.querySelector('[data-role="tank"]');
+          card.querySelector('[data-role="tank-fill"]').style.height = `${percentOf(s.value, tank)}%`;
+        }
+
+        if (widgetType === "gauge") {
+          const pct = percentOf(s.value, card.querySelector('[data-role="gauge"]'));
+          card.querySelector('[data-role="gauge-fill"]').style.strokeDasharray = `${pct} 100`;
+          card.querySelector('[data-role="gauge-needle"]').style.transform = `rotate(${pct * 1.8 - 90}deg)`;
+        }
+
+        if (widgetType === "line_chart" || widgetType === "tank") {
           const chart = charts[s.id];
           if (!chart || lastTimestamps[s.id] === s.timestamp) return;
           lastTimestamps[s.id] = s.timestamp;
@@ -179,16 +209,14 @@
 
         if (widgetType === "meter") {
           const fill = card.querySelector('[data-role="meter-fill"]');
-          const min = parseFloat(fill.dataset.min);
-          const max = parseFloat(fill.dataset.max);
-          const pct = Math.max(0, Math.min(100, ((s.value - min) / (max - min)) * 100));
-          fill.style.width = `${pct}%`;
+          fill.style.width = `${percentOf(s.value, fill)}%`;
         }
 
         if (widgetType === "led") {
           const dot = card.querySelector('[data-role="led-dot"]');
           const threshold = parseFloat(dot.dataset.threshold);
           dot.classList.toggle("lit", s.value >= threshold);
+          card.classList.toggle("alarm", s.value >= threshold);
         }
 
         if (widgetType === "button") {
@@ -240,6 +268,50 @@
     } catch (err) {
       console.error("Polling failed", err);
     }
+  }
+
+  function updateKpis(valuesById) {
+    document.querySelectorAll(".kpi").forEach((kpi) => {
+      const value = valuesById[kpi.dataset.sensorId];
+      if (value === undefined) return;
+
+      if (kpi.dataset.kind === "value") {
+        kpi.querySelector('[data-role="kpi-value"]').textContent = formatValue(value);
+        kpi.querySelector('[data-role="kpi-bar"]').style.width = `${percentOf(value, kpi)}%`;
+        return;
+      }
+
+      const chip = kpi.querySelector('[data-role="kpi-state"]');
+      if (kpi.dataset.kind === "button") {
+        const isOn = Math.abs(value - parseFloat(kpi.dataset.onValue)) < VALUE_TOLERANCE;
+        chip.textContent = isOn ? "Encendido" : "Apagado";
+        chip.className = isOn ? "state-chip on" : "state-chip";
+      } else {
+        const isLit = value >= parseFloat(kpi.dataset.threshold);
+        chip.textContent = isLit ? "Activa" : "Normal";
+        chip.className = isLit ? "state-chip alarm" : "state-chip on";
+      }
+    });
+  }
+
+  function updateSetpoints(valuesById) {
+    document.querySelectorAll('[data-role="tank-setpoint"]').forEach((line) => {
+      const value = valuesById[line.dataset.setpointSensorId];
+      if (value === undefined) return;
+      const tank = line.closest('[data-role="tank"]');
+      line.style.bottom = `${percentOf(value, tank)}%`;
+      line.querySelector('[data-role="tank-setpoint-label"]').textContent = `SP ${formatValue(value)}`;
+      line.hidden = false;
+    });
+  }
+
+  function updateLastSeen(devices, serverNow) {
+    const el = document.querySelector('[data-role="last-update"]');
+    if (!el) return;
+    const times = devices.filter((d) => d.last_seen_at).map((d) => new Date(d.last_seen_at).getTime());
+    if (!times.length) return;
+    const ageSeconds = Math.max(0, Math.round((serverNow - Math.max(...times)) / 1000));
+    el.textContent = ageSeconds <= 1 ? "Actualizado ahora" : `Último dato hace ${ageSeconds} s`;
   }
 
   poll();
