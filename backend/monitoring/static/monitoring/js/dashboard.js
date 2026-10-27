@@ -274,7 +274,8 @@
     });
   }
 
-  // Luces de estado: verde encendido, gris apagado; la falla es verde (sin falla) o roja.
+  // Luces de estado: marcha y modo van verde (encendido) o gris (apagado);
+  // la falla va gris (sin falla) o roja (con falla), nunca verde.
   function updateLights(valuesById) {
     document.querySelectorAll(".status-light").forEach((el) => {
       const value = valuesById[el.dataset.sensorId];
@@ -288,7 +289,7 @@
         text = isOn ? "encendido" : "apagado";
       } else {
         const hasFault = value >= parseFloat(el.dataset.threshold);
-        state = hasFault ? "alarm" : "on";
+        state = hasFault ? "alarm" : "off";
         text = hasFault ? "con falla" : "sin falla";
       }
       el.querySelector('[data-role="light"]').className = `light ${state}`;
