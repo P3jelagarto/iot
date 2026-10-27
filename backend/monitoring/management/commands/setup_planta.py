@@ -45,7 +45,7 @@ PLANT_DEVICES = {
             ("setpoint_nivel", "%", Widget.TYPE_SLIDER, {"min_value": 0, "max_value": 100, "slider_step": 5}),
             ("velocidad_ref", "Hz", Widget.TYPE_SLIDER, {"min_value": 0, "max_value": 50, "slider_step": 1}),
             ("frecuencia", "Hz", Widget.TYPE_GAUGE, {"min_value": 0, "max_value": 50, "featured": True}),
-            ("falla", "", Widget.TYPE_LED, {"led_on_threshold": 1}),
+            ("falla", "", Widget.TYPE_LED, {"led_on_threshold": 1, "featured": True}),
         ],
     ),
 }
