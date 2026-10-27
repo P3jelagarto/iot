@@ -171,6 +171,7 @@
       });
 
       updateKpis(valuesById);
+      updateLights(valuesById);
       updateSetpoints(valuesById);
       updateLastSeen(data.devices, serverNow);
 
@@ -268,23 +269,31 @@
     document.querySelectorAll(".kpi").forEach((kpi) => {
       const value = valuesById[kpi.dataset.sensorId];
       if (value === undefined) return;
+      kpi.querySelector('[data-role="kpi-value"]').textContent = formatValue(value);
+      kpi.querySelector('[data-role="kpi-bar"]').style.width = `${percentOf(value, kpi)}%`;
+    });
+  }
 
-      if (kpi.dataset.kind === "value") {
-        kpi.querySelector('[data-role="kpi-value"]').textContent = formatValue(value);
-        kpi.querySelector('[data-role="kpi-bar"]').style.width = `${percentOf(value, kpi)}%`;
-        return;
-      }
+  // Luces de estado: marcha y modo van verde (encendido) o gris (apagado);
+  // la falla va gris (sin falla) o roja (con falla), nunca verde.
+  function updateLights(valuesById) {
+    document.querySelectorAll(".status-light").forEach((el) => {
+      const value = valuesById[el.dataset.sensorId];
+      if (value === undefined) return;
 
-      const chip = kpi.querySelector('[data-role="kpi-state"]');
-      if (kpi.dataset.kind === "button") {
-        const isOn = Math.abs(value - parseFloat(kpi.dataset.onValue)) < VALUE_TOLERANCE;
-        chip.textContent = isOn ? "Encendido" : "Apagado";
-        chip.className = isOn ? "state-chip on" : "state-chip";
+      let state;
+      let text;
+      if (el.dataset.kind === "button") {
+        const isOn = Math.abs(value - parseFloat(el.dataset.onValue)) < VALUE_TOLERANCE;
+        state = isOn ? "on" : "off";
+        text = isOn ? "encendido" : "apagado";
       } else {
-        const isLit = value >= parseFloat(kpi.dataset.threshold);
-        chip.textContent = isLit ? "Activa" : "Normal";
-        chip.className = isLit ? "state-chip alarm" : "state-chip on";
+        const hasFault = value >= parseFloat(el.dataset.threshold);
+        state = hasFault ? "alarm" : "off";
+        text = hasFault ? "con falla" : "sin falla";
       }
+      el.querySelector('[data-role="light"]').className = `light ${state}`;
+      el.title = `${el.querySelector(".light-label").textContent}: ${text}`;
     });
   }
 

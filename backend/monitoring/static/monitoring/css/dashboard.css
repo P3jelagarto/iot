@@ -2,17 +2,18 @@
   /* Tema oscuro fijo del proyecto. Cambia --brand-primary / --brand-accent
      para ajustar los colores de marca. */
   color-scheme: dark;
-  --surface-1: #121a26;
-  --page-plane: #0a0f17;
+  --surface-1: #0a0a0a;
+  --page-plane: #000000;
   --text-primary: #e6edf5;
   --text-secondary: #a3b1c2;
   --text-muted: #6b7a8c;
-  --gridline: #1f2a38;
-  --baseline: #2c3a4c;
+  --gridline: #1f1f22;
+  --baseline: #303036;
   --border: rgba(230, 237, 245, 0.10);
   --series-1: #22d3ee;
   --status-good: #22c55e;
   --status-critical: #ef4444;
+  --light-off: #4b5058;
   --water-top: #22d3ee;
   --water-bottom: #0e7490;
   --setpoint: #fbbf24;
@@ -201,7 +202,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 16px;
-  background: rgba(10, 15, 23, 0.35);
+  background: rgba(255, 255, 255, 0.03);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -452,14 +453,9 @@ h1 {
   gap: 8px;
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--brand-accent);
+  border-left: 3px solid var(--light-off);
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.07), transparent 60%);
-}
-
-.kpi-state {
-  border-left-color: var(--text-muted);
-  background: rgba(10, 15, 23, 0.35);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .kpi-label {
@@ -499,47 +495,41 @@ h1 {
   transition: width 0.6s ease;
 }
 
-.state-chip {
+/* --- Luces de estado (marcha, modo, falla): círculo sin recuadro --- */
+
+.status-lights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 36px;
+  margin-bottom: 22px;
+}
+
+.status-light {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  align-self: flex-start;
-  margin-top: auto;
-  padding: 5px 12px 5px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  gap: 10px;
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
 }
 
-.state-chip::before {
-  content: "";
-  width: 8px;
-  height: 8px;
+.light {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--light-off);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.state-chip.on {
-  color: var(--status-good);
-  border-color: rgba(34, 197, 94, 0.45);
-  background: rgba(34, 197, 94, 0.1);
-}
-
-.state-chip.on::before {
+.light.on {
   background: var(--status-good);
-  animation: pulse 2s ease-out infinite;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.75);
 }
 
-.state-chip.alarm {
-  color: var(--status-critical);
-  border-color: rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.12);
-}
-
-.state-chip.alarm::before {
+.light.alarm {
   background: var(--status-critical);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.85);
   animation: blink 1s steps(2, start) infinite;
 }
 

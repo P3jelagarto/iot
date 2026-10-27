@@ -18,31 +18,33 @@
 
 {{ seed_data|json_script:"seed-data" }}
 
-{% if featured %}
 {% localize off %}
-<div class="kpi-row">
-  {% for sensor, widget in featured %}
-    {% if widget.widget_type == "button" %}
-    <div class="kpi kpi-state" data-sensor-id="{{ sensor.id }}" data-kind="button" data-on-value="{{ widget.button_on_value }}">
-      <span class="kpi-label">{{ sensor.label }}</span>
-      <span class="state-chip" data-role="kpi-state">--</span>
-    </div>
-    {% elif widget.widget_type == "led" %}
-    <div class="kpi kpi-state" data-sensor-id="{{ sensor.id }}" data-kind="led" data-threshold="{{ widget.led_on_threshold }}">
-      <span class="kpi-label">{{ sensor.label }}</span>
-      <span class="state-chip" data-role="kpi-state">--</span>
-    </div>
-    {% else %}
-    <div class="kpi" data-sensor-id="{{ sensor.id }}" data-kind="value" data-min="{{ widget.min_value }}" data-max="{{ widget.max_value }}">
-      <span class="kpi-label">{{ sensor.label }}</span>
-      <span class="kpi-value"><span data-role="kpi-value">--</span> <small>{{ sensor.unit }}</small></span>
-      <span class="kpi-bar"><span data-role="kpi-bar"></span></span>
-    </div>
-    {% endif %}
+{% if lights %}
+<div class="status-lights">
+  {% for sensor, widget in lights %}
+  <div class="status-light" data-sensor-id="{{ sensor.id }}"
+       {% if widget.widget_type == "led" %}data-kind="led" data-threshold="{{ widget.led_on_threshold }}"
+       {% else %}data-kind="button" data-on-value="{{ widget.button_on_value }}"{% endif %}
+       title="{{ sensor.label }}: sin datos">
+    <span class="light" data-role="light"></span>
+    <span class="light-label">{{ sensor.label }}</span>
+  </div>
   {% endfor %}
 </div>
-{% endlocalize %}
 {% endif %}
+
+{% if indicators %}
+<div class="kpi-row">
+  {% for sensor, widget in indicators %}
+  <div class="kpi" data-sensor-id="{{ sensor.id }}" data-min="{{ widget.min_value }}" data-max="{{ widget.max_value }}">
+    <span class="kpi-label">{{ sensor.label }}</span>
+    <span class="kpi-value"><span data-role="kpi-value">--</span> <small>{{ sensor.unit }}</small></span>
+    <span class="kpi-bar"><span data-role="kpi-bar"></span></span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endlocalize %}
 
 <div id="dashboard-root" class="gadget-grid"
      data-api-url="{% url 'monitoring:api-latest' %}"

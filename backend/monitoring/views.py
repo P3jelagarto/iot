@@ -64,15 +64,20 @@ def dashboard(request):
     gadgets.sort(key=lambda item: item[1].position)
     featured = [item for item in gadgets if item[1].featured]
 
-    # Indicadores: primero las mediciones, después los estados (botones y LEDs).
+    # Los estados destacados (botones y LEDs) van arriba como luces sueltas y las
+    # mediciones como indicadores con valor. Un LED destacado no repite su
+    # tarjeta en la grilla: la luz ya lo muestra.
     state_types = {Widget.TYPE_BUTTON, Widget.TYPE_LED}
-    featured.sort(key=lambda item: item[1].widget_type in state_types)
+    indicators = [item for item in featured if item[1].widget_type not in state_types]
+    lights = [item for item in featured if item[1].widget_type in state_types]
+    gadgets = [item for item in gadgets if not (item[1].widget_type == Widget.TYPE_LED and item[1].featured)]
 
     context = {
         "devices": devices,
         "seed_data": seed_data,
         "gadgets": gadgets,
-        "featured": featured,
+        "indicators": indicators,
+        "lights": lights,
     }
     return render(request, "monitoring/dashboard.html", context)
 
