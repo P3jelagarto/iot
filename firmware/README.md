@@ -1,9 +1,8 @@
-# Firmware ESP32 — estanque
+# Firmware ESP32
 
 Sketch para el ESP32 del estanque (`esp32-estanque`): mide el nivel con un
-sensor ultrasónico **HC-SR04** o **JSN-SR04T** (a prueba de agua) y lo publica
-en % como la variable `nivel`, siguiendo el "Contrato MQTT" documentado en el
-`README.md` raíz del proyecto.
+sensor ultrasónico HC-SR04 y lo publica
+en % como la variable ¨nivel¨.
 
 ## Conexión del sensor
 
@@ -18,14 +17,10 @@ Monta el sensor arriba del estanque, apuntando hacia el agua, y mide con una
 huincha la distancia al fondo (`DISTANCIA_VACIO_CM`) y al agua con el estanque
 lleno (`DISTANCIA_LLENO_CM`).
 
-## Requisitos
-
-- [Arduino IDE](https://www.arduino.cc/en/software) 2.x con soporte para
-  placas ESP32 instalado (Boards Manager → `esp32` by Espressif Systems).
-- Librerías (Sketch → Include Library → Manage Libraries):
-  - **WiFiManager** (tzapu)
-  - **PubSubClient** (Nick O'Leary)
-  - **ArduinoJson** (Benoit Blanchon, v6.x)
+Librerías (Sketch → Include Library → Manage Libraries):
+**WiFiManager** (tzapu)
+**PubSubClient** (Nick O'Leary)
+**ArduinoJson** (Benoit Blanchon, v6.x)
 
 ## 1. Registra el dispositivo en la plataforma
 
