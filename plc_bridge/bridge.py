@@ -1,18 +1,3 @@
-"""Puente Modbus TCP <-> MQTT entre el PLC Siemens S7-1200 y la plataforma.
-
-Corre en la Raspberry Pi (servicio `plc_bridge` de docker-compose, perfil
-"plc"). Cada ciclo:
-
-1. Escribe en el PLC el nivel que publica el ESP32 y un contador watchdog
-   (el PLC detiene la bomba si deja de cambiar).
-2. Lee el estado del PLC (marcha, modo, setpoint, velocidad, frecuencia del
-   D700, falla) y lo publica como el dispositivo `plc-bomba`.
-3. Los comandos del dashboard (`ecs/plc-bomba/<variable>/set`) se escriben
-   en los registros de comando del PLC.
-
-El mapa de registros está documentado en docs/PLC_VDF.md y debe coincidir
-con el DB que usa la instrucción MB_SERVER del PLC.
-"""
 import json
 import logging
 import os
