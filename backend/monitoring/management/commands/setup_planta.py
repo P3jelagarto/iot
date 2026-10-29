@@ -4,11 +4,13 @@ Uso:
     python manage.py setup_planta
     python manage.py setup_planta --owner admin
 
-Registra dos dispositivos:
+Registra tres dispositivos:
 
 - ``esp32-estanque``: el ESP32 con el sensor ultrasónico de nivel.
 - ``plc-bomba``: el S7-1200 + variador D700, publicado por el puente
   Modbus TCP que corre en la Raspberry Pi (``plc_bridge/``).
+- ``esp32-vdf``: el ESP32 conectado al D700 por RS-485, que reemplaza el
+  cableado PLC <-> variador (``docs/VDF_INALAMBRICO.md``).
 
 Además crea el usuario del profesor (``cliente`` / ``123456`` por defecto,
 rol Visualizador): ve el dashboard y puede encender la bomba, cambiar de modo
@@ -27,6 +29,7 @@ from monitoring.models import Device, Profile, Sensor, Widget
 
 ESP32_SLUG = "esp32-estanque"
 PLC_SLUG = "plc-bomba"
+VDF_SLUG = "esp32-vdf"
 
 # slug -> (nombre, etiqueta, [(variable, unidad, widget_type, opciones del widget)])
 PLANT_DEVICES = {
@@ -47,6 +50,15 @@ PLANT_DEVICES = {
             ("velocidad_ref", "Hz", Widget.TYPE_SLIDER, {"min_value": 0, "max_value": 50, "slider_step": 1}),
             ("frecuencia", "Hz", Widget.TYPE_GAUGE, {"min_value": 0, "max_value": 50, "featured": True}),
             ("falla", "", Widget.TYPE_LED, {"led_on_threshold": 1, "featured": True}),
+        ],
+    ),
+    VDF_SLUG: (
+        "Variador (ESP32 + D700)",
+        "esp32",
+        [
+            ("corriente", "A", Widget.TYPE_GAUGE, {"min_value": 0, "max_value": 5}),
+            ("enlace_vdf", "", Widget.TYPE_LED, {"led_on_threshold": 1}),
+            ("falla_vdf", "", Widget.TYPE_LED, {"led_on_threshold": 1}),
         ],
     ),
 }
@@ -96,10 +108,13 @@ class Command(BaseCommand):
 
         esp32_token = devices[ESP32_SLUG].auth_token
         plc_token = devices[PLC_SLUG].auth_token
+        vdf_token = devices[VDF_SLUG].auth_token
         self.stdout.write(self.style.SUCCESS("\nListo. Pega estas líneas en tu .env:\n"))
         self.stdout.write(f"SIMULATOR_DEVICE_TOKENS={ESP32_SLUG}:{esp32_token},{PLC_SLUG}:{plc_token}")
         self.stdout.write(f"PLC_DEVICE_TOKEN={plc_token}")
+        self.stdout.write(f"VDF_DEVICE_TOKEN={vdf_token}")
         self.stdout.write(f"\nY en firmware/esp32_ecs_iot/config.h:\n#define DEVICE_TOKEN \"{esp32_token}\"")
+        self.stdout.write(f"\nY en firmware/esp32_vdf/config.h:\n#define DEVICE_TOKEN  \"{vdf_token}\"")
 
     def _ensure_viewer(self, username, password):
         viewer, created = User.objects.get_or_create(username=username)

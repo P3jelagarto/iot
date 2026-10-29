@@ -29,6 +29,13 @@ PLC_TOKEN = os.environ.get("PLC_DEVICE_TOKEN", "")
 ESP32_SLUG = os.environ.get("ESP32_DEVICE_SLUG", "esp32-estanque")
 # Opcional: si se define, solo se reenvía al PLC el nivel firmado con este token.
 ESP32_TOKEN = os.environ.get("ESP32_DEVICE_TOKEN", "")
+# Variador inalámbrico (docs/VDF_INALAMBRICO.md): el PLC ya no tiene cables al
+# D700; el puente reenvía su orden al ESP32 del variador y le devuelve al PLC
+# la frecuencia real y la falla. Apagado, el puente funciona como antes.
+VDF_WIRELESS = os.environ.get("VDF_INALAMBRICO", "false").lower() in ("1", "true", "yes")
+VDF_SLUG = os.environ.get("VDF_DEVICE_SLUG", "esp32-vdf")
+VDF_TOKEN = os.environ.get("VDF_DEVICE_TOKEN", "")
+VDF_STALE_SECONDS = float(os.environ.get("VDF_STALE_SECONDS", "3"))
 
 # --- Mapa de registros (holding registers, dirección 0 = 40001) ---
 # Escritura Raspberry -> PLC
@@ -38,6 +45,8 @@ REG_CMD_SETPOINT = 2      # % x10
 REG_CMD_VELOCIDAD = 3     # Hz x10
 REG_NIVEL = 4             # % x10 (desde el ESP32)
 REG_WATCHDOG = 5
+REG_VDF_FRECUENCIA = 6    # Hz x10, frecuencia real leída por el ESP32 del variador
+REG_VDF_ESTADO = 7        # bit 0 enlace OK, bit 1 falla del D700, bit 2 en marcha
 # Lectura PLC -> Raspberry (bloque contiguo desde REG_STATE_START)
 REG_STATE_START = 10
 STATE_VARIABLES = [
@@ -58,6 +67,9 @@ COMMANDS = {
     "velocidad_ref": (REG_CMD_VELOCIDAD, 10, 0, 50),
 }
 
+# Lectura PLC -> Raspberry: orden que el PLC le da al variador
+REG_ORDEN_START = 16      # 16 marcha (0/1), 17 velocidad Hz x10
+
 
 class Bridge:
     def __init__(self):
@@ -71,6 +83,8 @@ class Bridge:
         self.nivel = None
         self.watchdog = 0
         self.force_publish = False
+        self.vdf = {}               # última telemetría del ESP32 del variador
+        self.vdf_seen_at = None     # time.monotonic() del último mensaje válido
 
     # --- MQTT ---
     def on_connect(self, client, userdata, flags, rc):
@@ -80,6 +94,8 @@ class Bridge:
         log.info("MQTT conectado a %s:%s", MQTT_BROKER_HOST, MQTT_BROKER_PORT)
         client.subscribe(f"{MQTT_TOPIC_PREFIX}/{PLC_SLUG}/+/set", qos=1)
         client.subscribe(f"{MQTT_TOPIC_PREFIX}/{ESP32_SLUG}/nivel", qos=1)
+        if VDF_WIRELESS:
+            client.subscribe(f"{MQTT_TOPIC_PREFIX}/{VDF_SLUG}/+", qos=0)
 
     def on_message(self, client, userdata, msg):
         try:
@@ -96,6 +112,14 @@ class Bridge:
                 log.warning("Nivel con token inválido, se ignora")
                 return
             self.nivel = float(value)
+            return
+
+        if len(parts) == 3 and parts[1] == VDF_SLUG:
+            if not secrets.compare_digest(str(data.get("token", "")), VDF_TOKEN):
+                log.warning("Telemetría del variador con token inválido, se ignora")
+                return
+            self.vdf[parts[2]] = float(value)
+            self.vdf_seen_at = time.monotonic()
             return
 
         if len(parts) == 4 and parts[3] == "set":
@@ -120,13 +144,38 @@ class Bridge:
         }
         self.mqtt.publish(f"{MQTT_TOPIC_PREFIX}/{PLC_SLUG}/{variable}", json.dumps(payload), qos=1)
 
+    def forward_vdf(self):
+        """Reenvía al ESP32 la orden del PLC y le devuelve al PLC el estado del variador."""
+        orden = self.read_registers(REG_ORDEN_START, 2)
+        if orden is not None:
+            marcha, hz_x10 = orden
+            payload = {"marcha": 1 if marcha else 0, "hz": max(0, min(500, hz_x10)) / 10, "token": VDF_TOKEN}
+            self.mqtt.publish(f"{MQTT_TOPIC_PREFIX}/{VDF_SLUG}/orden/set", json.dumps(payload), qos=0)
+
+        fresh = self.vdf_seen_at is not None and time.monotonic() - self.vdf_seen_at < VDF_STALE_SECONDS
+        enlace = fresh and self.vdf.get("enlace_vdf", 0) == 1
+        estado = (
+            (1 if enlace else 0)
+            | (2 if fresh and self.vdf.get("falla_vdf", 0) else 0)
+            | (4 if fresh and self.vdf.get("en_marcha", 0) else 0)
+        )
+        frecuencia = int(round(self.vdf.get("frecuencia", 0) * 10)) if enlace else 0
+        self.write_registers(REG_VDF_FRECUENCIA, [frecuencia, estado])
+
     # --- Modbus ---
     def write_register(self, register, value):
+        return self.write_registers(register, [value])
+
+    def write_registers(self, register, values):
         with self.plc_lock:
             try:
                 if not self.plc.connected:
                     self.plc.connect()
-                result = self.plc.write_register(register, value & 0xFFFF, slave=PLC_UNIT_ID)
+                values = [v & 0xFFFF for v in values]
+                if len(values) == 1:
+                    result = self.plc.write_register(register, values[0], slave=PLC_UNIT_ID)
+                else:
+                    result = self.plc.write_registers(register, values, slave=PLC_UNIT_ID)
                 if result.isError():
                     log.error("Error escribiendo HR%d: %s", register, result)
                     return False
@@ -136,25 +185,26 @@ class Bridge:
                 self.plc.close()
                 return False
 
-    def read_state(self):
+    def read_registers(self, register, count):
         with self.plc_lock:
             try:
                 if not self.plc.connected:
                     self.plc.connect()
-                result = self.plc.read_holding_registers(
-                    REG_STATE_START, count=len(STATE_VARIABLES), slave=PLC_UNIT_ID
-                )
+                result = self.plc.read_holding_registers(register, count=count, slave=PLC_UNIT_ID)
                 if result.isError():
-                    log.error("Error leyendo estado del PLC: %s", result)
+                    log.error("Error leyendo HR%d: %s", register, result)
                     return None
-                return {
-                    variable: raw / scale
-                    for (variable, scale), raw in zip(STATE_VARIABLES, result.registers)
-                }
+                return result.registers
             except Exception as exc:
                 log.error("PLC no disponible en %s:%s: %s", PLC_HOST, PLC_PORT, exc)
                 self.plc.close()
                 return None
+
+    def read_state(self):
+        registers = self.read_registers(REG_STATE_START, len(STATE_VARIABLES))
+        if registers is None:
+            return None
+        return {variable: raw / scale for (variable, scale), raw in zip(STATE_VARIABLES, registers)}
 
     def run(self):
         if not PLC_TOKEN:
@@ -164,6 +214,11 @@ class Bridge:
         self.mqtt.connect_async(MQTT_BROKER_HOST, MQTT_BROKER_PORT, keepalive=60)
         self.mqtt.loop_start()
         log.info("Puente PLC %s:%s (unit %s) <-> MQTT", PLC_HOST, PLC_PORT, PLC_UNIT_ID)
+        if VDF_WIRELESS:
+            if not VDF_TOKEN:
+                log.warning("VDF_INALAMBRICO activo pero VDF_DEVICE_TOKEN vacío: el ESP32 del "
+                            "variador ignorará las órdenes. Corre `python manage.py setup_planta`.")
+            log.info("Variador inalámbrico: órdenes a %s/%s/orden/set", MQTT_TOPIC_PREFIX, VDF_SLUG)
 
         last_publish = 0.0
         while True:
@@ -171,6 +226,8 @@ class Bridge:
             self.write_register(REG_WATCHDOG, self.watchdog)
             if self.nivel is not None:
                 self.write_register(REG_NIVEL, int(round(self.nivel * 10)))
+            if VDF_WIRELESS:
+                self.forward_vdf()
 
             now = time.monotonic()
             if self.force_publish or now - last_publish >= PLC_PUBLISH_SECONDS:
