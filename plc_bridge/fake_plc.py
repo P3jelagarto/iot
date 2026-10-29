@@ -7,6 +7,11 @@ D700 "virtual" que acelera con rampa.
 Uso (en la Raspberry o en tu PC):
     python fake_plc.py              # escucha en 0.0.0.0:5020
     PLC_HOST=127.0.0.1 PLC_PORT=5020 python bridge.py
+
+Con FAKE_VDF_INALAMBRICO=true imita plc/PLC03_bomba_inalambrico.scl: no
+simula el variador, sino que publica la orden en los registros 16-17 y toma la
+frecuencia real y la falla de los registros 6-7 (los escribe el puente con lo
+que manda el ESP32 del variador).
 """
 import logging
 import os
@@ -27,6 +32,7 @@ AUTO_KP = 4.0
 AUTO_MIN_HZ = 20.0
 MAX_HZ = 50.0
 RAMP_HZ_PER_S = 10.0
+VDF_WIRELESS = os.environ.get("FAKE_VDF_INALAMBRICO", "false").lower() in ("1", "true", "yes")
 
 holding = ModbusSequentialDataBlock(0, [0] * 20)
 context = ModbusServerContext(slaves=ModbusSlaveContext(hr=holding, zero_mode=True), single=True)
@@ -40,7 +46,7 @@ def plc_cycle():
     last_watchdog = None
     last_watchdog_change = time.monotonic()
     while True:
-        cmd_marcha, cmd_auto, sp_x10, vel_x10, nivel_x10, watchdog = holding.getValues(0, 6)
+        cmd_marcha, cmd_auto, sp_x10, vel_x10, nivel_x10, watchdog, vdf_hz_x10, vdf_estado = holding.getValues(0, 8)
         now = time.monotonic()
         if watchdog != last_watchdog:
             last_watchdog, last_watchdog_change = watchdog, now
@@ -56,15 +62,24 @@ def plc_cycle():
         else:
             marcha = 1 if cmd_marcha else 0
             target = vel_x10 / 10
-        if not comunicacion_ok:
+        falla = not comunicacion_ok
+        if VDF_WIRELESS:
+            enlace_vdf = vdf_estado & 1
+            falla = falla or not enlace_vdf or bool(vdf_estado & 2)
+        if falla:
             marcha = 0
         target = target if marcha else 0.0
-        step = RAMP_HZ_PER_S * TICK
-        frecuencia += max(-step, min(step, target - frecuencia))
 
-        falla = 0 if comunicacion_ok else 1
+        if VDF_WIRELESS:
+            frecuencia = vdf_hz_x10 / 10 if enlace_vdf else 0.0
+        else:
+            step = RAMP_HZ_PER_S * TICK
+            frecuencia += max(-step, min(step, target - frecuencia))
+
         holding.setValues(
-            10, [marcha, 1 if cmd_auto else 0, sp_x10, vel_x10, int(round(frecuencia * 10)), falla]
+            10,
+            [marcha, 1 if cmd_auto else 0, sp_x10, vel_x10, int(round(frecuencia * 10)), int(falla),
+             marcha, int(round(target * 10))],
         )
         time.sleep(TICK)
 

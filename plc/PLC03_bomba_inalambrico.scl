@@ -1,0 +1,126 @@
+// Programa de la bomba para el tablero PLC03, VERSION INALAMBRICA
+// (S7-1200 + D700 controlado por el ESP32 "esp32-vdf", sin cables al variador)
+// Importar en TIA: External source files > Add new external file > este archivo,
+// clic derecho > Generate blocks from source.
+// Despues, en Main [OB1]: segmento 1 = MB_SERVER, segmento 2 = llamada a FB_Bomba.
+//
+// Registros Modbus (MB_DATA.reg):
+//   0 marcha manual | 1 modo auto | 2 setpoint % x10 | 3 vel. manual Hz x10
+//   4 nivel % x10   | 5 watchdog  | 10..15 estado hacia la Raspberry
+//   6 frecuencia real del D700 Hz x10 (la escribe la Raspberry con lo que lee el ESP32)
+//   7 estado del D700: bit 0 enlace OK, bit 1 falla, bit 2 en marcha
+//   16 orden de marcha al variador | 17 orden de velocidad Hz x10 (las lee la Raspberry)
+//
+// Sin salidas fisicas al variador: la orden viaja PLC -> Raspberry -> WiFi -> ESP32 -> RS-485.
+// En .env de la Raspberry: VDF_INALAMBRICO=true (ver docs/VDF_INALAMBRICO.md).
+
+DATA_BLOCK "MB_DATA"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      reg : Array[0..19] of Int;
+   END_VAR
+
+BEGIN
+   reg[1] := 1;
+   reg[2] := 700;
+   reg[3] := 350;
+
+END_DATA_BLOCK
+
+DATA_BLOCK "MB_CONN"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      con : TCON_IP_v4;
+   END_VAR
+
+BEGIN
+   con.InterfaceId := 64;
+   con.ID := 1;
+   con.ConnectionType := 16#0B;
+   con.ActiveEstablished := FALSE;
+   con.RemotePort := 0;
+   con.LocalPort := 502;
+
+END_DATA_BLOCK
+
+FUNCTION_BLOCK "FB_Bomba"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR 
+      wdTimer : IEC_TIMER;
+      wdAnterior : Int;
+      comOk : Bool;
+      marcha : Bool;
+      enlaceTimer : IEC_TIMER;
+      enlaceVdf : Bool;
+      fallaVdf : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      nivel : Real;
+      setpoint : Real;
+      refHz : Real;
+      hayFalla : Bool;
+   END_VAR
+
+BEGIN
+	// Watchdog: si la Raspberry deja de escribir el registro 5 durante 5 s, se detiene la bomba
+	#wdTimer.TON(IN := ("MB_DATA".reg[5] = #wdAnterior), PT := T#5S);
+	#wdAnterior := "MB_DATA".reg[5];
+	#comOk := NOT #wdTimer.Q;
+	
+	// Estado del variador que llega por la Raspberry. El enlace tiene que
+	// estar OK 2 s seguidos antes de permitir la marcha (evita arranques a saltos).
+	#enlaceTimer.TON(IN := (INT_TO_WORD("MB_DATA".reg[7]) AND 16#0001) <> 16#0000, PT := T#2S);
+	#enlaceVdf := #enlaceTimer.Q AND #comOk;
+	#fallaVdf := (INT_TO_WORD("MB_DATA".reg[7]) AND 16#0002) <> 16#0000;
+	
+	#nivel := INT_TO_REAL("MB_DATA".reg[4]) / 10.0;
+	#setpoint := INT_TO_REAL("MB_DATA".reg[2]) / 10.0;
+	
+	IF "MB_DATA".reg[1] <> 0 THEN
+	    // Automatico: llena hasta el setpoint con histeresis de 3 %
+	    IF #nivel >= #setpoint THEN
+	        #marcha := FALSE;
+	    ELSIF #nivel < #setpoint - 3.0 THEN
+	        #marcha := TRUE;
+	    END_IF;
+	    #refHz := LIMIT(MN := 20.0, IN := 4.0 * (#setpoint - #nivel), MX := 50.0);
+	ELSE
+	    // Manual: marcha y velocidad desde el dashboard
+	    #marcha := "MB_DATA".reg[0] <> 0;
+	    #refHz := LIMIT(MN := 0.0, IN := INT_TO_REAL("MB_DATA".reg[3]) / 10.0, MX := 50.0);
+	END_IF;
+	
+	// Falla: sin Raspberry, sin enlace con el variador, o alarma del D700
+	#hayFalla := NOT #comOk OR NOT #enlaceVdf OR #fallaVdf;
+	IF #hayFalla THEN
+	    #marcha := FALSE;
+	END_IF;
+	
+	// Orden al D700 (la Raspberry la reenvia al ESP32 del variador)
+	"MB_DATA".reg[16] := SEL(G := #marcha, IN0 := 0, IN1 := 1);
+	IF #marcha THEN
+	    "MB_DATA".reg[17] := REAL_TO_INT(#refHz * 10.0);
+	ELSE
+	    "MB_DATA".reg[17] := 0;
+	END_IF;
+	
+	// Estado hacia la Raspberry
+	"MB_DATA".reg[10] := SEL(G := #marcha, IN0 := 0, IN1 := 1);
+	"MB_DATA".reg[11] := SEL(G := "MB_DATA".reg[1] <> 0, IN0 := 0, IN1 := 1);
+	"MB_DATA".reg[12] := "MB_DATA".reg[2];
+	"MB_DATA".reg[13] := "MB_DATA".reg[3];
+	// Frecuencia REAL del variador (Hz x10), leida por el ESP32
+	IF #enlaceVdf THEN
+	    "MB_DATA".reg[14] := "MB_DATA".reg[6];
+	ELSE
+	    "MB_DATA".reg[14] := 0;
+	END_IF;
+	"MB_DATA".reg[15] := SEL(G := #hayFalla, IN0 := 0, IN1 := 1);
+	
+END_FUNCTION_BLOCK

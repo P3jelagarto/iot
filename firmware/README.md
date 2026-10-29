@@ -1,5 +1,12 @@
 # Firmware ESP32
 
+Hay dos sketches:
+
+- `esp32_ecs_iot/`: el ESP32 del estanque (este README).
+- `esp32_vdf/`: el ESP32 conectado al variador D700 por RS-485, que reemplaza
+  los cables entre el PLC y el variador. Ver
+  [docs/VDF_INALAMBRICO.md](../docs/VDF_INALAMBRICO.md).
+
 Sketch para el ESP32 del estanque (`esp32-estanque`): mide el nivel con un
 sensor ultrasónico HC-SR04 y lo publica
 en % como la variable ¨nivel¨.

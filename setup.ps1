@@ -72,11 +72,13 @@ Write-Host "Registrando los dispositivos de la planta..."
 $out = docker compose exec -T web python manage.py setup_planta
 $simTokens = ($out | Where-Object { $_ -match "^SIMULATOR_DEVICE_TOKENS=" } | Select-Object -First 1) -replace "^SIMULATOR_DEVICE_TOKENS=", ""
 $plcToken = ($out | Where-Object { $_ -match "^PLC_DEVICE_TOKEN=" } | Select-Object -First 1) -replace "^PLC_DEVICE_TOKEN=", ""
+$vdfToken = ($out | Where-Object { $_ -match "^VDF_DEVICE_TOKEN=" } | Select-Object -First 1) -replace "^VDF_DEVICE_TOKEN=", ""
 $espToken = (($simTokens -split ",") | Where-Object { $_ -like "esp32-estanque:*" } | Select-Object -First 1) -replace "^esp32-estanque:", ""
 if (-not $simTokens -or -not $plcToken -or -not $espToken) { Die "No pude leer los tokens de setup_planta." }
 
 Set-Var "SIMULATOR_DEVICE_TOKENS" $simTokens
 Set-Var "PLC_DEVICE_TOKEN" $plcToken
+if ($vdfToken) { Set-Var "VDF_DEVICE_TOKEN" $vdfToken }
 docker compose up -d simulator
 
 # IP de esta máquina en la red (la que usará el ESP32 para llegar al broker)

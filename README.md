@@ -28,6 +28,7 @@ simulado desde el `.env` (ver [docs/PLC_VDF.md](docs/PLC_VDF.md)).
 - **Conectar el PLC y el variador paso a paso:** [docs/PUESTA_EN_MARCHA.md](docs/PUESTA_EN_MARCHA.md)
 - **Hardware (PLC, D700, Raspberry, cableado, programa TIA Portal):** [docs/PLC_VDF.md](docs/PLC_VDF.md)
 - **Firmware del ESP32:** [firmware/README.md](firmware/README.md)
+- **Variador sin cables al PLC (ESP32 + RS-485 por WiFi):** [docs/VDF_INALAMBRICO.md](docs/VDF_INALAMBRICO.md)
 - **Usuario para el profesor:** `cliente` / `123456`, rol **Visualizador**:
   ve el dashboard en vivo y puede encender o apagar la bomba, cambiar entre
   modo auto y manual y mover el setpoint de nivel. No puede cambiar la
