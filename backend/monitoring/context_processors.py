@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.templatetags.static import static
 
 from .models import SiteBranding
 from .permissions import get_profile, is_admin_or_global
@@ -6,7 +7,8 @@ from .permissions import get_profile, is_admin_or_global
 
 def role_context(request):
     branding = SiteBranding.get_solo()
-    site_logo_url = branding.logo.url if branding.logo else None
+    # Sin logo subido, todos los usuarios (incluido el de solo lectura) ven el de FlowSense IOT.
+    site_logo_url = branding.logo.url if branding.logo else static("monitoring/img/flowsense-logo.png")
     site_background_url = branding.background_image.url if branding.background_image else None
 
     context = {
