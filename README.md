@@ -29,8 +29,9 @@ simulado desde el `.env` (ver [docs/PLC_VDF.md](docs/PLC_VDF.md)).
 - **Hardware (PLC, D700, Raspberry, cableado, programa TIA Portal):** [docs/PLC_VDF.md](docs/PLC_VDF.md)
 - **Firmware del ESP32:** [firmware/README.md](firmware/README.md)
 - **Usuario para el profesor:** `cliente` / `123456`, rol **Visualizador**:
-  solo ve el dashboard en vivo, sin poder mover controles ni entrar a la
-  configuración. Lo crea `setup_planta`.
+  ve el dashboard en vivo y puede encender o apagar la bomba, cambiar entre
+  modo auto y manual y mover el setpoint de nivel. No puede cambiar la
+  velocidad manual ni entrar a la configuración. Lo crea `setup_planta`.
 - **Nombre de la plataforma:** variable `SITE_NAME` en `.env`. El logo y la
   imagen de fondo se suben desde **Configuración → Marca del sitio**.
 
@@ -247,7 +248,7 @@ de Django para el uso normal. Cuatro roles (`monitoring/models.py:Profile`):
 | **Global**        | Ve y administra los dispositivos de **todos** los usuarios y la marca del sitio. |
 | **Administrador** | Administra sus propios dispositivos + puede dar de alta/baja cuentas desde `/monitoring/users/`. No puede crear cuentas Global. |
 | **Operador**      | Administra solo los dispositivos que él mismo registra. |
-| **Visualizador**  | Solo lectura: ve el dashboard en vivo de todos los dispositivos, sin mover controles ni abrir otras páginas. Pensado para el profesor (`cliente` / `123456`, lo crea `setup_planta`). |
+| **Visualizador**  | Control básico: ve el dashboard en vivo de todos los dispositivos, puede encender o apagar la bomba, cambiar entre modo auto y manual, mover el setpoint de nivel y ordenar los gadgets. No puede cambiar la velocidad manual (Hz) ni abrir otras páginas. Pensado para el profesor (`cliente` / `123456`, lo crea `setup_planta`). |
 
 El superusuario creado por `DJANGO_SUPERUSER_*` (ver arriba) es **Global**
 automáticamente. Para crear más usuarios, inicia sesión como Global o

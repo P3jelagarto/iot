@@ -10,11 +10,12 @@ Registra dos dispositivos:
 - ``plc-bomba``: el S7-1200 + variador D700, publicado por el puente
   Modbus TCP que corre en la Raspberry Pi (``plc_bridge/``).
 
-Además crea el usuario de solo lectura para el profesor (``cliente`` /
-``123456`` por defecto, rol Visualizador): solo ve el dashboard.
+Además crea el usuario del profesor (``cliente`` / ``123456`` por defecto,
+rol Visualizador): ve el dashboard y puede encender la bomba, cambiar de modo
+y mover el setpoint de nivel.
 
 Es seguro de re-correr: si los dispositivos ya existen, solo actualiza sus
-variables y gadgets (los tokens no cambian). Si el usuario de solo lectura ya
+variables y gadgets (los tokens no cambian). Si el usuario del profesor ya
 existe, no le cambia la contraseña. Al final imprime los tokens y
 la línea lista para pegar en ``.env``.
 """
@@ -59,8 +60,8 @@ class Command(BaseCommand):
             "--owner",
             help="Usuario dueño de los dispositivos (por defecto, el primer usuario Global activo).",
         )
-        parser.add_argument("--viewer-username", default="cliente", help="Usuario de solo lectura.")
-        parser.add_argument("--viewer-password", default="123456", help="Contraseña inicial del usuario de solo lectura.")
+        parser.add_argument("--viewer-username", default="cliente", help="Usuario del profesor (rol Visualizador).")
+        parser.add_argument("--viewer-password", default="123456", help="Contraseña inicial del usuario del profesor.")
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -108,9 +109,9 @@ class Command(BaseCommand):
             viewer.save()
         Profile.objects.update_or_create(user=viewer, defaults={"role": Profile.ROLE_VIEWER})
         if created:
-            self.stdout.write(f"Creado usuario de solo lectura: {username} / {password}")
+            self.stdout.write(f"Creado usuario del profesor: {username} / {password}")
         else:
-            self.stdout.write(f"Usuario de solo lectura {username!r} ya existía (contraseña sin cambios).")
+            self.stdout.write(f"Usuario del profesor {username!r} ya existía (contraseña sin cambios).")
 
     def _resolve_owner(self, username):
         if username:

@@ -27,7 +27,9 @@ from .forms import (
 from .models import Device, ManualEntry, Product, ProductType, Profile, Sensor, SiteBranding, Widget
 from .mqtt_publish import publish_command
 from .permissions import (
+    VIEWER_CONTROL_VARIABLES,
     admin_or_global_required,
+    can_command,
     devices_for,
     get_profile,
     get_role,
@@ -78,6 +80,7 @@ def dashboard(request):
         "gadgets": gadgets,
         "indicators": indicators,
         "lights": lights,
+        "viewer_controls": VIEWER_CONTROL_VARIABLES,
     }
     return render(request, "monitoring/dashboard.html", context)
 
@@ -258,6 +261,8 @@ def sensor_command(request, pk):
 
     if not widget.is_control:
         return JsonResponse({"error": "Este sensor no acepta comandos."}, status=400)
+    if not can_command(request.user, sensor):
+        return JsonResponse({"error": "Tu usuario no puede mover este control."}, status=403)
 
     try:
         body = json.loads(request.body)
