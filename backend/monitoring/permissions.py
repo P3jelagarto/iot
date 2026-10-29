@@ -30,6 +30,16 @@ def is_viewer(user):
     return get_role(user) == Profile.ROLE_VIEWER
 
 
+# Controles de la planta que el Visualizador sí puede mover desde el dashboard.
+# La velocidad manual (Hz) y toda la configuración quedan para los demás roles.
+VIEWER_CONTROL_VARIABLES = {"bomba_marcha", "modo_auto", "setpoint_nivel"}
+
+
+def can_command(user, sensor):
+    """Whether this user may send commands to this sensor's control gadget."""
+    return not is_viewer(user) or sensor.variable in VIEWER_CONTROL_VARIABLES
+
+
 def devices_for(user):
     """Devices visible to this user: all of them for Global and Visualizador, only owned ones otherwise."""
     if get_role(user) in (Profile.ROLE_GLOBAL, Profile.ROLE_VIEWER):

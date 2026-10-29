@@ -7,13 +7,13 @@
     <h1>Dashboard</h1>
     <p class="page-subtitle" data-role="last-update">Esperando datos…</p>
   </div>
-  {% if user_role != "viewer" %}
   <div class="page-actions">
     <span class="order-hint" data-role="order-hint" hidden>Arrastra los gadgets para ordenarlos</span>
     <button type="button" class="btn-secondary" data-role="order-toggle">Editar orden</button>
+    {% if user_role != "viewer" %}
     <a class="btn" href="{% url 'monitoring:device-create' %}">+ Agregar dispositivo</a>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {{ seed_data|json_script:"seed-data" }}
@@ -86,7 +86,7 @@
       {% elif widget.widget_type == "button" %}
         <button type="button" class="gadget-button" data-role="gadget-button"
                 data-on-value="{{ widget.button_on_value }}" data-off-value="{{ widget.button_off_value }}"
-                {% if user_role == "viewer" %}disabled{% endif %}>
+                {% if user_role == "viewer" and sensor.variable not in viewer_controls %}disabled{% endif %}>
           --
         </button>
 
@@ -129,7 +129,7 @@
         <div class="sensor-value" data-role="latest-value">--</div>
         <input type="range" class="gadget-slider" data-role="gadget-slider"
                min="{{ widget.min_value }}" max="{{ widget.max_value }}" step="{{ widget.slider_step }}"
-               {% if user_role == "viewer" %}disabled{% endif %}>
+               {% if user_role == "viewer" and sensor.variable not in viewer_controls %}disabled{% endif %}>
       {% endif %}
       {% endlocalize %}
     </div>
@@ -144,8 +144,6 @@
   {% endfor %}
 </div>
 
-{% if user_role != "viewer" %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-{% endif %}
 <script src="{% static 'monitoring/js/dashboard.js' %}"></script>
 {% endblock %}

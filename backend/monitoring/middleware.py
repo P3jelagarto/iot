@@ -5,13 +5,21 @@ from django.urls import Resolver404, resolve
 
 from .permissions import is_viewer
 
-# Únicas páginas de la plataforma que puede abrir un Visualizador (solo lectura).
-VIEWER_ALLOWED_URLS = {"monitoring:dashboard", "monitoring:api-latest", "login", "logout"}
+# Únicas páginas de la plataforma que puede abrir un Visualizador. Los comandos
+# se filtran además por variable en la vista (ver VIEWER_CONTROL_VARIABLES).
+VIEWER_ALLOWED_URLS = {
+    "monitoring:dashboard",
+    "monitoring:api-latest",
+    "monitoring:dashboard-order",
+    "monitoring:sensor-command",
+    "login",
+    "logout",
+}
 
 
 class ViewerReadOnlyMiddleware:
     """Limita al rol Visualizador al dashboard: cualquier otra página lo
-    devuelve al dashboard, y los POST (comandos, formularios) se rechazan."""
+    devuelve al dashboard, y los POST fuera de las URLs permitidas se rechazan."""
 
     def __init__(self, get_response):
         self.get_response = get_response

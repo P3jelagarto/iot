@@ -25,7 +25,7 @@
         </a>
         <nav>
             {% if user.is_authenticated and user_role == "viewer" %}
-                <span class="user">{{ user.username }} · solo lectura</span>
+                <span class="user">{{ user.username }} · control básico</span>
                 <form method="post" action="{% url 'logout' %}" class="logout-form">
                     {% csrf_token %}
                     <button type="submit" class="link-button">Salir</button>
